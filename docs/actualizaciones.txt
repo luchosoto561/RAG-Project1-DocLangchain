@@ -1,0 +1,3 @@
+17/9 -> ya tenemos hecho seeds_loader.py que se encarga de almacenar en un json dentro de crawler los links validos. Hace una limpieza de links para que no se repitan lugares, etc.
+Ademas tenemos hecho fetcher_v1.py que se encarga de descargar los archivos de las fuentes, aparece un concepto muy importante que es el de robots.txt. Ya los testee y andan bien, digamos tengo cargado los html.
+El tema es que tienen profundidad cero, es decir, no podes acceder a links dentro de los links que tenemos en los txt de crawler. 

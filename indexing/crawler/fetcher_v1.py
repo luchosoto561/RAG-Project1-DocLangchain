@@ -1,13 +1,28 @@
-# baja las urls validas del manifest (semillas), guarda el html crudo y deja un registro de cada descarga. No sigue enlaces (profundidad cero)
+"""
+    baja las urls validas del seeds_manifest.json (semillas), guarda el html crudo y deja un registro de cada descarga. No sigue enlaces (profundidad cero)
 
+"""
 from __future__ import annotations
 from pathlib import Path
+# haslib es un modulo estandar de python que implementa funciones hash como sha1, tiene como entrada bytes y como salida puede tener digest() -> bytes o hexdigest() -> string hex (dos caracteres por byte)
 import json, hashlib, datetime as dt
 from urllib.parse import urlsplit, urlunsplit
 import urllib.robotparser as robotparser
 
+from typing import TypedDict, Optional
+
 import httpx  
 
+
+class Dict_por_url(TypedDict):
+        url: str
+        host: str
+        status_code: Optional[int]
+        fetched_at: str
+        html_crudo_path: Optional[str]
+        error: Optional[str]
+
+# cadena de texto que se manda en la cabecera a una web por ej la doc oficial de langchain, sirve para identificar quien hace la peticion
 USER_AGENT = "RAG-Langchain-Fetcher/0.1 (lucianofranciscosoto@gmail.com)"
 TIMEOUT = 15.0
 
@@ -17,7 +32,12 @@ MANIFEST_PATH = Path("indexing/crawler/seeds_manifest.json")
 RAW_DIR = Path("data/raw_pages")
 INDEX_PATH = Path("data/raw_pages/index.jsonl")
 
-# genera un id estable a partir de un texto (la url) usando hash SHA-1, es decir, obtenemos un nombre corto, seguro y repetible que representa a una url.
+"""
+hashlib.sha1(bytes) crea un objeto hash SHA-1 inicializado con esos bytes y .hexdigest() finaliza el computo y devuelve el resumen en hexadecimal 
+RESULTADO : La funcion devuelve el SHA-1 en hex de la cadena s (codificada en UTF-8), es determinista, es decir, misma s, mismo resultado, asi es como se 
+convierte cualquier string en una huella unica de tamano fijo
+
+"""
 def sha1(s: str) -> str:
     return hashlib.sha1(s.encode("utf-8")).hexdigest()
 
@@ -27,10 +47,12 @@ def today_stamp() -> str:
 
 # lee el manifest y devuelve la lista de URLS validas, sin repetidas
 def load_valid_seed_urls(manifest_path: Path) -> list[str]:
-    """Lee el manifest y devuelve la lista de URLs válidas (deduplicadas)."""
+    
     data = json.loads(manifest_path.read_text(encoding="utf-8"))
     urls: list[str] = []
+    # agrega las url validas en urls
     for g in data["groups"]:
+        # agrega las urls dentro de cada lista perteneciente a groups, a extend se le pasa un iterable y el agrega todos los elementos, el [] se pone porque si no existe la clave valid_urls se considera vacio
         urls.extend(g.get("valid_urls", []))
     # dedup simple conservando orden aproximado
     seen = set()
@@ -41,15 +63,21 @@ def load_valid_seed_urls(manifest_path: Path) -> list[str]:
             out.append(u)
     return out
 
-# consulta el robots.txt del sitio y dice si tenemos permisos para bajar esa url
+"""
+consulta el robots.txt del sitio y dice si tenemos permisos para acceder a la url pasada como parametro
+
+rp.parse(lineas de texto del bot.txt) -> limpia las lineas quitando espacios, etc, agrupa por user-agent las
+reglas  
+"""
 def robots_allows(url: str) -> bool:
-    """Consulta robots.txt del host y verifica si se permite fetch de 'url'."""
+    
     parts = urlsplit(url)
     robots_url = urlunsplit((parts.scheme, parts.netloc, "/robots.txt", "", ""))
     
-    # crea un interprete de robots.txt de la libreria estandar, este objeto sabe leer reglas, y luego responder si tu bot puede o no  visitar una URL
+    # rp sera quien responda si una url esta permitida para un user-agent
     rp = robotparser.RobotFileParser()
     try:
+        # follow_redirects=True indica que siga las redirecciones que tenga que seguir hasta llegar al robots.txt final, sino si tuviera que seguir una redireccion, no se seguiria
         with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=TIMEOUT, follow_redirects=True) as client:
             r = client.get(robots_url)
             if r.status_code == 200:
@@ -61,7 +89,7 @@ def robots_allows(url: str) -> bool:
         rp.parse(["User-agent: *", "Allow: /"])
     return rp.can_fetch(USER_AGENT, url)
 
-# descarga la pagina si es html y 200 ok, la guarda en data/raw_pages/... y arma un registro con el resultado
+# descarga la pagina si es html y 200 ok, la guarda en data/raw_pages/... y retorna un registro con el resultado
 def fetch_and_save(url: str) -> dict:
     """Descarga una URL y guarda el HTML crudo si es text/html.
     Devuelve un registro con metadatos (para index.jsonl)."""
@@ -107,22 +135,24 @@ def fetch_and_save(url: str) -> dict:
         return rec
 
 # agrega ese registro como una linea en data/raws_pages/index.json1
-def append_index(rec: dict) -> None:
+def append_index(recs: list[Dict_por_url]) -> None:
     INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with INDEX_PATH.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    INDEX_PATH.write_text(json.dumps(recs, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-# orquesta todo, carga las urls, las descarga una por una y al final muestra un resumen
-if __name__ == "__main__":
-    if not MANIFEST_PATH.exists():
-        raise SystemExit(f"No existe {MANIFEST_PATH}. Corré primero seeds_loader.py")
+def fetcher_v1() -> None:
+    
+    # devuelve una lista de las url que se encuentran en ese json sin repetidas (es decir las que tenemos que descargar)
+    urls_a_descargar = load_valid_seed_urls(Path("indexing/crawler/seeds_manifest.json"))
 
-    urls = load_valid_seed_urls(MANIFEST_PATH)
-    print(f"Descargando {len(urls)} seeds…")
-    ok = 0
-    for u in urls:
-        rec = fetch_and_save(u)
-        append_index(rec)
-        ok += int(rec["html_crudo_path"] is not None)
-    print(f"✔ Listo. OK: {ok} | Ver data/raw_pages/ y {INDEX_PATH}")
+    # La “lista grande” de registros:
+    lista_diccionarios_por_url: list[Dict_por_url] = []
+    
+    for url in urls_a_descargar:
+        # se descarga la url y se crea descripcion de la url
+        lista_diccionarios_por_url.append(fetch_and_save(url))
+        
+    # se transforma el diccionario a json
+    append_index(lista_diccionarios_por_url)
+
+

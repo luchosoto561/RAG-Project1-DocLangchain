@@ -2,10 +2,6 @@
 con mis palabras -> dejamos todas las urls con una forma unica y limpia, validamos dominios, verificando que cada url apunte solo a los dominios oficiales, generamos un resumen ej formato JSON,
 que especifica que archivos .txt lei, cuantas urls validas, invalidas por grupos, la lista de urls que efectivamente se van a  usar como punto de partida
 
-segun chat gpt -> Este script lee tus URLs semilla desde los .txt en indexing/crawler/, las normaliza (fuerza https, host en minúsculas, quita #fragment, limpia params de tracking tipo utm_*,
-agrega / si es “carpeta”), valida que pertenezcan a los dominios oficiales y genera un manifest JSON (seeds_manifest.json) con un resumen por grupo: cuántas había en total, 
-cuántas son válidas/ inválidas y las listas de cada una. Ese manifest es la “lista limpia” que después usa el fetcher para descargar páginas.
-
 """
 from __future__ import annotations
 from pathlib import Path

@@ -1,3 +1,7 @@
+"""
+saca del interior de los html los links y los devuelve en una lista, se aplican un par de filtros obvios. 
+"""
+
 # indexing/crawler/link_extractor.py
 from __future__ import annotations
 from html.parser import HTMLParser

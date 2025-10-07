@@ -107,10 +107,10 @@ def fetch_with_rate_limit_and_backoff(
     url: str, # la URL a descargar
     fetch_fn: Callable[[str], Dict[str, Any]], # funcion que vos le pasas que hace la descarga, recibe un string y devuelve un diccionario con el resultado.
     *,
-    min_interval_s: float = DEFAULT_MIN_INTERVAL_S,
-    max_retries: int = DEFAULT_MAX_RETRIES,
-    backoff_base_s: float = DEFAULT_BACKOFF_BASE_S,
-    jitter_factor: float = DEFAULT_JITTER_FACTOR,
+    min_interval_s: float = DEFAULT_MIN_INTERVAL_S, # intervalo minimo que se espera entre request
+    max_retries: int = DEFAULT_MAX_RETRIES, # maximo de intentos
+    backoff_base_s: float = DEFAULT_BACKOFF_BASE_S, # marca el primer escalon de espera cuando tenes que reintentar DEFAULT_BACKOFF_BASE_S * 2 ** 0
+    jitter_factor: float = DEFAULT_JITTER_FACTOR, # porcentaje de variacion aleatoria que aplicamos a ese tiempo ideal para desincronizar reintentos, evitando que todas las request se reintenten al mismo tiempo
 ) -> Dict[str, Any]:
     """
     - Espera lo necesario para no "rafaguear" al host (rate-limit por host).
@@ -128,9 +128,9 @@ def fetch_with_rate_limit_and_backoff(
     - Si en el futuro querés respetar "Retry-After", tendríamos que exponer headers desde fetch_fn.
     """
     host = _host_from_url(url)
-    # cuanto dormimos en total por ritmo
+    # cuanto dormimos en total por ritmo, sirve para info (metricas) pero no afecta la logica
     total_rl_wait = 0.0
-    # cuanto dormimos en el ultimo backoff (si hubo)
+    # cuanto dormimos en el ultimo backoff (si hubo), sirve para info (metricas) pero no afecta la logica
     last_backoff = 0.0
 
     # contador de reintentos
@@ -168,15 +168,3 @@ def fetch_with_rate_limit_and_backoff(
     rec["last_backoff_s"] = round(last_backoff, 3)
 
     return rec
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Utilidades opcionales
-# ──────────────────────────────────────────────────────────────────────────────
-
-def reset_rate_limit_state() -> None:
-    """
-    Borra el estado de rate-limit (por si corrés varios batchs y querés "resetear" el ritmo)
-    
-    """
-    _LAST_HIT_PER_HOST.clear()

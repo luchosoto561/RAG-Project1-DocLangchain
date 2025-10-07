@@ -1,5 +1,5 @@
 """
-
+aplica filtros a las urls para ver si las deja pasar o no
 """
 from __future__ import annotations
 from typing import Tuple, List, Dict

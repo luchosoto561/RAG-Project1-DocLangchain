@@ -1,3 +1,6 @@
 17/9 -> ya tenemos hecho seeds_loader.py que se encarga de almacenar en un json dentro de crawler los links validos. Hace una limpieza de links para que no se repitan lugares, etc.
 Ademas tenemos hecho fetcher_v1.py que se encarga de descargar los archivos de las fuentes, aparece un concepto muy importante que es el de robots.txt. Ya los testee y andan bien, digamos tengo cargado los html.
 El tema es que tienen profundidad cero, es decir, no podes acceder a links dentro de los links que tenemos en los txt de crawler. 
+6/10 -> ya terminamos el crawler y tenemos en index.json todas las urls tanto las de profundidad cero como las de profundidad 1, la verdad que no puse en el json la url del padre que dicen que puede servir para
+tener como el camino que se sigue, no puse la profundidad, no puse un hash del html que sirve creo que si cambia el contenido te das cuenta y entonces no tenes que leer todo para saber si cambio o no. Vi teoricamente 
+lo que va a hacer el parser. LUEGO NO MIRE MUCHO LO DE URL SOLICITADA VS EFECTIVA, PERO DEJE EL CODIGO EN fetcher_v1 PARA OBTENER A PARTIR DE LA SOLICITADA, LA EFECTIVA. 

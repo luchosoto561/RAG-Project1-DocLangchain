@@ -6,21 +6,27 @@ from __future__ import annotations
 from pathlib import Path
 # haslib es un modulo estandar de python que implementa funciones hash como sha1, tiene como entrada bytes y como salida puede tener digest() -> bytes o hexdigest() -> string hex (dos caracteres por byte)
 import json, hashlib, datetime as dt
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urlsplit, urlunsplit, urlparse, urljoin
 import urllib.robotparser as robotparser
 
 from typing import TypedDict, Optional
 
 import httpx  
+import re
+
 
 
 class Dict_por_url(TypedDict):
         url: str
+        url_final: str
         host: str
         status_code: Optional[int]
         fetched_at: str
         html_crudo_path: Optional[str]
         error: Optional[str]
+        rl_wait_s_total: int
+        retries: int
+        last_backoff_s: int
 
 # cadena de texto que se manda en la cabecera a una web por ej la doc oficial de langchain, sirve para identificar quien hace la peticion
 USER_AGENT = "RAG-Langchain-Fetcher/0.1 (lucianofranciscosoto@gmail.com)"
@@ -30,7 +36,7 @@ TIMEOUT = 15.0
 MANIFEST_PATH = Path("indexing/crawler/seeds_manifest.json")
 
 RAW_DIR = Path("data/raw_pages")
-INDEX_PATH = Path("data/raw_pages/index.jsonl")
+INDEX_PATH = Path("data/raw_pages/index.json")
 
 """
 hashlib.sha1(bytes) crea un objeto hash SHA-1 inicializado con esos bytes y .hexdigest() finaliza el computo y devuelve el resumen en hexadecimal 
@@ -89,6 +95,35 @@ def robots_allows(url: str) -> bool:
         rp.parse(["User-agent: *", "Allow: /"])
     return rp.can_fetch(USER_AGENT, url)
 
+
+_CANONICAL_RE = re.compile(
+    r'<link[^>]+rel=["\']canonical["\'][^>]*href=["\']([^"\']+)["\']',
+    re.IGNORECASE
+)
+
+def _pick_url_final(requested_url: str, response) -> str:
+    """
+    Devuelve la URL final para citar:
+    1) URL efectiva (response.url) tras redirecciones.
+    2) Si hay <link rel="canonical"> confiable (mismo host, http/https), la prefiere.
+    """
+    effective_url = str(getattr(response, "url", requested_url) or requested_url)
+
+    try:
+        html = getattr(response, "text", "") or ""
+        m = _CANONICAL_RE.search(html)
+        if m:
+            href = m.group(1).strip()
+            cand = urljoin(effective_url, href)  # resuelve canonicals relativos
+            eff = urlparse(effective_url)
+            can = urlparse(cand)
+            if can.scheme in ("http", "https") and (can.netloc or "").lower() == (eff.netloc or "").lower():
+                return cand
+    except Exception:
+        pass
+
+    return effective_url
+
 # descarga la pagina si es html y 200 ok, la guarda en data/raw_pages/... y retorna un registro con el resultado
 def fetch_and_save(url: str) -> dict:
     """Descarga una URL y guarda el HTML crudo si es text/html.
@@ -97,11 +132,15 @@ def fetch_and_save(url: str) -> dict:
     fetched_at = dt.datetime.now().isoformat()
     rec = {
         "url": url,
+        "url_final": None,
         "host": host,
         "status_code": None,
         "fetched_at": fetched_at,
         "html_crudo_path": None,
         "error": None,
+        "rl_wait_s_total": 0,
+        "retries": 0,
+        "last_backoff_s": 0 
     }
 
     if not robots_allows(url):
@@ -111,6 +150,7 @@ def fetch_and_save(url: str) -> dict:
     try:
         with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=TIMEOUT, follow_redirects=True) as client:
             resp = client.get(url)
+        rec["url_final"] = _pick_url_final(url, resp)
         rec["status_code"] = resp.status_code
         if resp.status_code != 200:
             rec["error"] = f"http_{resp.status_code}"
@@ -121,6 +161,7 @@ def fetch_and_save(url: str) -> dict:
             rec["error"] = "non_html"
             return rec
 
+        
         # page_id estable a partir de la URL normalizada del manifest
         pid = sha1(url)
         out_dir = RAW_DIR / host / today_stamp()
@@ -132,6 +173,7 @@ def fetch_and_save(url: str) -> dict:
 
     except httpx.RequestError as e:
         rec["error"] = f"network:{type(e).__name__}"
+        rec.setdefault("url_final", url)
         return rec
 
 # agrega ese registro como una linea en data/raws_pages/index.json1

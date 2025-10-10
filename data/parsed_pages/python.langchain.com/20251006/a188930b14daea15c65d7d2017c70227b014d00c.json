@@ -1,0 +1,107 @@
+{
+  "provenance": {
+    "url_final": "https://python.langchain.com/docs/how_to/passthrough/",
+    "title": "How to pass through arguments from one step to the next | 🦜️🔗 LangChain",
+    "fetched_at": "2025-10-06T21:54:46.654276"
+  },
+  "sections": [
+    {
+      "level": 1,
+      "heading_text": "How to pass through arguments from one step to the next | 🦜️🔗 LangChain",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "This guide assumes familiarity with the following concepts:"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "LangChain Expression Language (LCEL)",
+            "Chaining runnables",
+            "Calling runnables in parallel",
+            "Custom functions"
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "When composing chains with several steps, sometimes you will want to pass data from previous steps unchanged for use as input to a later step. The RunnablePassthrough class allows you to do just this, and is typically is used in conjunction with a RunnableParallel to pass data through to a later step in your constructed chains."
+        },
+        {
+          "type": "paragraph",
+          "text": "See the example below:"
+        },
+        {
+          "type": "code",
+          "code": "%pip install -qU langchain langchain-openaiimport osfrom getpass import getpassif \"OPENAI_API_KEY\" not in os.environ:    os.environ[\"OPENAI_API_KEY\"] = getpass()"
+        },
+        {
+          "type": "code",
+          "code": "from langchain_core.runnables import RunnableParallel, RunnablePassthroughrunnable = RunnableParallel(    passed=RunnablePassthrough(),    modified=lambda x: x[\"num\"] + 1,)runnable.invoke({\"num\": 1})"
+        },
+        {
+          "type": "code",
+          "code": "{'passed': {'num': 1}, 'modified': 2}"
+        },
+        {
+          "type": "paragraph",
+          "text": "As seen above, passed key was called with RunnablePassthrough() and so it simply passed on {'num': 1}."
+        },
+        {
+          "type": "paragraph",
+          "text": "We also set a second key in the map with modified. This uses a lambda to set a single value adding 1 to the num, which resulted in modified key with the value of 2."
+        }
+      ],
+      "children": [
+        {
+          "level": 2,
+          "heading_text": "Retrieval Example​",
+          "anchor": "retrieval-example",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "In the example below, we see a more real-world use case where we use RunnablePassthrough along with RunnableParallel in a chain to properly format inputs to a prompt:"
+            },
+            {
+              "type": "code",
+              "code": "from langchain_community.vectorstores import FAISSfrom langchain_core.output_parsers import StrOutputParserfrom langchain_core.prompts import ChatPromptTemplatefrom langchain_core.runnables import RunnablePassthroughfrom langchain_openai import ChatOpenAI, OpenAIEmbeddingsvectorstore = FAISS.from_texts(    [\"harrison worked at kensho\"], embedding=OpenAIEmbeddings())retriever = vectorstore.as_retriever()template = \"\"\"Answer the question based only on the following context:{context}Question: {question}\"\"\"prompt = ChatPromptTemplate.from_template(template)model = ChatOpenAI()retrieval_chain = (    {\"context\": retriever, \"question\": RunnablePassthrough()}    | prompt    | model    | StrOutputParser())retrieval_chain.invoke(\"where did harrison work?\")"
+            },
+            {
+              "type": "code",
+              "code": "'Harrison worked at Kensho.'"
+            },
+            {
+              "type": "paragraph",
+              "text": "Here the input to prompt is expected to be a map with keys \"context\" and \"question\". The user input is just the question. So we need to get the context using our retriever and passthrough the user input under the \"question\" key. The RunnablePassthrough allows us to pass on the user's question to the prompt and model."
+            }
+          ],
+          "children": []
+        },
+        {
+          "level": 2,
+          "heading_text": "Next steps​",
+          "anchor": "next-steps",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "Now you've learned how to pass data through your chains to help format the data flowing through your chains."
+            },
+            {
+              "type": "paragraph",
+              "text": "To learn more, see the other how-to guides on runnables in this section."
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "Retrieval Example",
+                "Next steps"
+              ]
+            }
+          ],
+          "children": []
+        }
+      ]
+    }
+  ]
+}

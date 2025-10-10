@@ -1,0 +1,413 @@
+{
+  "provenance": {
+    "url_final": "https://python.langchain.com/docs/how_to/custom_tools/",
+    "title": "How to create tools | 🦜️🔗 LangChain",
+    "fetched_at": "2025-10-06T21:55:17.400477"
+  },
+  "sections": [
+    {
+      "level": 1,
+      "heading_text": "How to create tools | 🦜️🔗 LangChain",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "When constructing an agent, you will need to provide it with a list of Tools that it can use. Besides the actual function that is called, the Tool consists of several components:"
+        },
+        {
+          "type": "paragraph",
+          "text": "LangChain supports the creation of tools from:"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "Functions;",
+            "LangChain Runnables;",
+            "By sub-classing from BaseTool -- This is the most flexible method, it provides the largest degree of control, at the expense of more effort and code."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Creating tools from functions may be sufficient for most use cases, and can be done via a simple @tool decorator. If more configuration is needed-- e.g., specification of both sync and async implementations-- one can also use the StructuredTool.from_function class method."
+        },
+        {
+          "type": "paragraph",
+          "text": "In this guide we provide an overview of these methods."
+        },
+        {
+          "type": "paragraph",
+          "text": "Models will perform better if the tools have well chosen names, descriptions and JSON schemas."
+        }
+      ],
+      "children": [
+        {
+          "level": 2,
+          "heading_text": "Creating tools from functions​",
+          "anchor": "creating-tools-from-functions",
+          "blocks": [],
+          "children": [
+            {
+              "level": 3,
+              "heading_text": "@tool decorator​",
+              "anchor": "tool-decorator",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "This @tool decorator is the simplest way to define a custom tool. The decorator uses the function name as the tool name by default, but this can be overridden by passing a string as the first argument. Additionally, the decorator will use the function's docstring as the tool's description - so a docstring MUST be provided."
+                },
+                {
+                  "type": "code",
+                  "code": "from langchain_core.tools import tool@tooldef multiply(a: int, b: int) -> int:    \"\"\"Multiply two numbers.\"\"\"    return a * b# Let's inspect some of the attributes associated with the tool.print(multiply.name)print(multiply.description)print(multiply.args)"
+                },
+                {
+                  "type": "code",
+                  "code": "multiplyMultiply two numbers.{'a': {'title': 'A', 'type': 'integer'}, 'b': {'title': 'B', 'type': 'integer'}}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Or create an async implementation, like this:"
+                },
+                {
+                  "type": "code",
+                  "code": "from langchain_core.tools import tool@toolasync def amultiply(a: int, b: int) -> int:    \"\"\"Multiply two numbers.\"\"\"    return a * b"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Note that @tool supports parsing of annotations, nested schemas, and other features:"
+                },
+                {
+                  "type": "code",
+                  "code": "from typing import Annotated, List@tooldef multiply_by_max(    a: Annotated[int, \"scale factor\"],    b: Annotated[List[int], \"list of ints over which to take maximum\"],) -> int:    \"\"\"Multiply a by the maximum of b.\"\"\"    return a * max(b)print(multiply_by_max.args_schema.model_json_schema())"
+                },
+                {
+                  "type": "code",
+                  "code": "{'description': 'Multiply a by the maximum of b.', 'properties': {'a': {'description': 'scale factor',   'title': 'A',   'type': 'integer'},  'b': {'description': 'list of ints over which to take maximum',   'items': {'type': 'integer'},   'title': 'B',   'type': 'array'}}, 'required': ['a', 'b'], 'title': 'multiply_by_maxSchema', 'type': 'object'}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "You can also customize the tool name and JSON args by passing them into the tool decorator."
+                },
+                {
+                  "type": "code",
+                  "code": "from pydantic import BaseModel, Fieldclass CalculatorInput(BaseModel):    a: int = Field(description=\"first number\")    b: int = Field(description=\"second number\")@tool(\"multiplication-tool\", args_schema=CalculatorInput, return_direct=True)def multiply(a: int, b: int) -> int:    \"\"\"Multiply two numbers.\"\"\"    return a * b# Let's inspect some of the attributes associated with the tool.print(multiply.name)print(multiply.description)print(multiply.args)print(multiply.return_direct)"
+                },
+                {
+                  "type": "code",
+                  "code": "multiplication-toolMultiply two numbers.{'a': {'description': 'first number', 'title': 'A', 'type': 'integer'}, 'b': {'description': 'second number', 'title': 'B', 'type': 'integer'}}True"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "@tool can optionally parse Google Style docstrings and associate the docstring components (such as arg descriptions) to the relevant parts of the tool schema. To toggle this behavior, specify parse_docstring:"
+                },
+                {
+                  "type": "code",
+                  "code": "@tool(parse_docstring=True)def foo(bar: str, baz: int) -> str:    \"\"\"The foo.    Args:        bar: The bar.        baz: The baz.    \"\"\"    return barprint(foo.args_schema.model_json_schema())"
+                },
+                {
+                  "type": "code",
+                  "code": "{'description': 'The foo.', 'properties': {'bar': {'description': 'The bar.',   'title': 'Bar',   'type': 'string'},  'baz': {'description': 'The baz.', 'title': 'Baz', 'type': 'integer'}}, 'required': ['bar', 'baz'], 'title': 'fooSchema', 'type': 'object'}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "By default, @tool(parse_docstring=True) will raise ValueError if the docstring does not parse correctly. See API Reference for detail and examples."
+                }
+              ],
+              "children": []
+            },
+            {
+              "level": 3,
+              "heading_text": "StructuredTool​",
+              "anchor": "structuredtool",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The StructuredTool.from_function class method provides a bit more configurability than the @tool decorator, without requiring much additional code."
+                },
+                {
+                  "type": "code",
+                  "code": "from langchain_core.tools import StructuredTooldef multiply(a: int, b: int) -> int:    \"\"\"Multiply two numbers.\"\"\"    return a * basync def amultiply(a: int, b: int) -> int:    \"\"\"Multiply two numbers.\"\"\"    return a * bcalculator = StructuredTool.from_function(func=multiply, coroutine=amultiply)print(calculator.invoke({\"a\": 2, \"b\": 3}))print(await calculator.ainvoke({\"a\": 2, \"b\": 5}))"
+                },
+                {
+                  "type": "code",
+                  "code": "610"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "To configure it:"
+                },
+                {
+                  "type": "code",
+                  "code": "class CalculatorInput(BaseModel):    a: int = Field(description=\"first number\")    b: int = Field(description=\"second number\")def multiply(a: int, b: int) -> int:    \"\"\"Multiply two numbers.\"\"\"    return a * bcalculator = StructuredTool.from_function(    func=multiply,    name=\"Calculator\",    description=\"multiply numbers\",    args_schema=CalculatorInput,    return_direct=True,    # coroutine= ... <- you can specify an async method if desired as well)print(calculator.invoke({\"a\": 2, \"b\": 3}))print(calculator.name)print(calculator.description)print(calculator.args)"
+                },
+                {
+                  "type": "code",
+                  "code": "6Calculatormultiply numbers{'a': {'description': 'first number', 'title': 'A', 'type': 'integer'}, 'b': {'description': 'second number', 'title': 'B', 'type': 'integer'}}"
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "level": 2,
+          "heading_text": "Creating tools from Runnables​",
+          "anchor": "creating-tools-from-runnables",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "LangChain Runnables that accept string or dict input can be converted to tools using the as_tool method, which allows for the specification of names, descriptions, and additional schema information for arguments."
+            },
+            {
+              "type": "paragraph",
+              "text": "Example usage:"
+            },
+            {
+              "type": "code",
+              "code": "from langchain_core.language_models import GenericFakeChatModelfrom langchain_core.output_parsers import StrOutputParserfrom langchain_core.prompts import ChatPromptTemplateprompt = ChatPromptTemplate.from_messages(    [(\"human\", \"Hello. Please respond in the style of {answer_style}.\")])# Placeholder LLMllm = GenericFakeChatModel(messages=iter([\"hello matey\"]))chain = prompt | llm | StrOutputParser()as_tool = chain.as_tool(    name=\"Style responder\", description=\"Description of when to use tool.\")as_tool.args"
+            },
+            {
+              "type": "code",
+              "code": "/var/folders/4j/2rz3865x6qg07tx43146py8h0000gn/T/ipykernel_95770/2548361071.py:14: LangChainBetaWarning: This API is in beta and may change in the future.  as_tool = chain.as_tool("
+            },
+            {
+              "type": "code",
+              "code": "{'answer_style': {'title': 'Answer Style', 'type': 'string'}}"
+            },
+            {
+              "type": "paragraph",
+              "text": "See this guide for more detail."
+            }
+          ],
+          "children": []
+        },
+        {
+          "level": 2,
+          "heading_text": "Subclass BaseTool​",
+          "anchor": "subclass-basetool",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "You can define a custom tool by sub-classing from BaseTool. This provides maximal control over the tool definition, but requires writing more code."
+            },
+            {
+              "type": "code",
+              "code": "from typing import Optionalfrom langchain_core.callbacks import (    AsyncCallbackManagerForToolRun,    CallbackManagerForToolRun,)from langchain_core.tools import BaseToolfrom langchain_core.tools.base import ArgsSchemafrom pydantic import BaseModel, Fieldclass CalculatorInput(BaseModel):    a: int = Field(description=\"first number\")    b: int = Field(description=\"second number\")# Note: It's important that every field has type hints. BaseTool is a# Pydantic class and not having type hints can lead to unexpected behavior.class CustomCalculatorTool(BaseTool):    name: str = \"Calculator\"    description: str = \"useful for when you need to answer questions about math\"    args_schema: Optional[ArgsSchema] = CalculatorInput    return_direct: bool = True    def _run(        self, a: int, b: int, run_manager: Optional[CallbackManagerForToolRun] = None    ) -> int:        \"\"\"Use the tool.\"\"\"        return a * b    async def _arun(        self,        a: int,        b: int,        run_manager: Optional[AsyncCallbackManagerForToolRun] = None,    ) -> int:        \"\"\"Use the tool asynchronously.\"\"\"        # If the calculation is cheap, you can just delegate to the sync implementation        # as shown below.        # If the sync calculation is expensive, you should delete the entire _arun method.        # LangChain will automatically provide a better implementation that will        # kick off the task in a thread to make sure it doesn't block other async code.        return self._run(a, b, run_manager=run_manager.get_sync())"
+            },
+            {
+              "type": "code",
+              "code": "multiply = CustomCalculatorTool()print(multiply.name)print(multiply.description)print(multiply.args)print(multiply.return_direct)print(multiply.invoke({\"a\": 2, \"b\": 3}))print(await multiply.ainvoke({\"a\": 2, \"b\": 3}))"
+            },
+            {
+              "type": "code",
+              "code": "Calculatoruseful for when you need to answer questions about math{'a': {'description': 'first number', 'title': 'A', 'type': 'integer'}, 'b': {'description': 'second number', 'title': 'B', 'type': 'integer'}}True66"
+            }
+          ],
+          "children": []
+        },
+        {
+          "level": 2,
+          "heading_text": "How to create async tools​",
+          "anchor": "how-to-create-async-tools",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "LangChain Tools implement the Runnable interface 🏃."
+            },
+            {
+              "type": "paragraph",
+              "text": "All Runnables expose the invoke and ainvoke methods (as well as other methods like batch, abatch, astream etc)."
+            },
+            {
+              "type": "paragraph",
+              "text": "So even if you only provide an sync implementation of a tool, you could still use the ainvoke interface, but there are some important things to know:"
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "LangChain's by default provides an async implementation that assumes that the function is expensive to compute, so it'll delegate execution to another thread.",
+                "If you're working in an async codebase, you should create async tools rather than sync tools, to avoid incuring a small overhead due to that thread.",
+                "If you need both sync and async implementations, use StructuredTool.from_function or sub-class from BaseTool.",
+                "If implementing both sync and async, and the sync code is fast to run, override the default LangChain async implementation and simply call the sync code.",
+                "You CANNOT and SHOULD NOT use the sync invoke with an async tool."
+              ]
+            },
+            {
+              "type": "code",
+              "code": "from langchain_core.tools import StructuredTooldef multiply(a: int, b: int) -> int:    \"\"\"Multiply two numbers.\"\"\"    return a * bcalculator = StructuredTool.from_function(func=multiply)print(calculator.invoke({\"a\": 2, \"b\": 3}))print(    await calculator.ainvoke({\"a\": 2, \"b\": 5}))  # Uses default LangChain async implementation incurs small overhead"
+            },
+            {
+              "type": "code",
+              "code": "610"
+            },
+            {
+              "type": "code",
+              "code": "from langchain_core.tools import StructuredTooldef multiply(a: int, b: int) -> int:    \"\"\"Multiply two numbers.\"\"\"    return a * basync def amultiply(a: int, b: int) -> int:    \"\"\"Multiply two numbers.\"\"\"    return a * bcalculator = StructuredTool.from_function(func=multiply, coroutine=amultiply)print(calculator.invoke({\"a\": 2, \"b\": 3}))print(    await calculator.ainvoke({\"a\": 2, \"b\": 5}))  # Uses use provided amultiply without additional overhead"
+            },
+            {
+              "type": "code",
+              "code": "610"
+            },
+            {
+              "type": "paragraph",
+              "text": "You should not and cannot use .invoke when providing only an async definition."
+            },
+            {
+              "type": "code",
+              "code": "@toolasync def multiply(a: int, b: int) -> int:    \"\"\"Multiply two numbers.\"\"\"    return a * btry:    multiply.invoke({\"a\": 2, \"b\": 3})except NotImplementedError:    print(\"Raised not implemented error. You should not be doing this.\")"
+            },
+            {
+              "type": "code",
+              "code": "Raised not implemented error. You should not be doing this."
+            }
+          ],
+          "children": []
+        },
+        {
+          "level": 2,
+          "heading_text": "Handling Tool Errors​",
+          "anchor": "handling-tool-errors",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "If you're using tools with agents, you will likely need an error handling strategy, so the agent can recover from the error and continue execution."
+            },
+            {
+              "type": "paragraph",
+              "text": "A simple strategy is to throw a ToolException from inside the tool and specify an error handler using handle_tool_errors."
+            },
+            {
+              "type": "paragraph",
+              "text": "When the error handler is specified, the exception will be caught and the error handler will decide which output to return from the tool."
+            },
+            {
+              "type": "paragraph",
+              "text": "You can set handle_tool_errors to True, a string value, or a function. If it's a function, the function should take a ToolException as a parameter and return a value."
+            },
+            {
+              "type": "paragraph",
+              "text": "Please note that only raising a ToolException won't be effective. You need to first set the handle_tool_errors of the tool because its default value is False."
+            },
+            {
+              "type": "code",
+              "code": "from langchain_core.tools import ToolExceptiondef get_weather(city: str) -> int:    \"\"\"Get weather for the given city.\"\"\"    raise ToolException(f\"Error: There is no city by the name of {city}.\")"
+            },
+            {
+              "type": "paragraph",
+              "text": "Here's an example with the default handle_tool_errors=True behavior."
+            },
+            {
+              "type": "code",
+              "code": "get_weather_tool = StructuredTool.from_function(    func=get_weather,    handle_tool_errors=True,)get_weather_tool.invoke({\"city\": \"foobar\"})"
+            },
+            {
+              "type": "code",
+              "code": "'Error: There is no city by the name of foobar.'"
+            },
+            {
+              "type": "paragraph",
+              "text": "We can set handle_tool_errors to a string that will always be returned."
+            },
+            {
+              "type": "code",
+              "code": "get_weather_tool = StructuredTool.from_function(    func=get_weather,    handle_tool_errors=\"There is no such city, but it's probably above 0K there!\",)get_weather_tool.invoke({\"city\": \"foobar\"})"
+            },
+            {
+              "type": "code",
+              "code": "\"There is no such city, but it's probably above 0K there!\""
+            },
+            {
+              "type": "paragraph",
+              "text": "Handling the error using a function:"
+            },
+            {
+              "type": "code",
+              "code": "def _handle_error(error: ToolException) -> str:    return f\"The following errors occurred during tool execution: `{error.args[0]}`\"get_weather_tool = StructuredTool.from_function(    func=get_weather,    handle_tool_errors=_handle_error,)get_weather_tool.invoke({\"city\": \"foobar\"})"
+            },
+            {
+              "type": "code",
+              "code": "'The following errors occurred during tool execution: `Error: There is no city by the name of foobar.`'"
+            }
+          ],
+          "children": []
+        },
+        {
+          "level": 2,
+          "heading_text": "Returning artifacts of Tool execution​",
+          "anchor": "returning-artifacts-of-tool-execution",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "Sometimes there are artifacts of a tool's execution that we want to make accessible to downstream components in our chain or agent, but that we don't want to expose to the model itself. For example if a tool returns custom objects like Documents, we may want to pass some view or metadata about this output to the model without passing the raw output to the model. At the same time, we may want to be able to access this full output elsewhere, for example in downstream tools."
+            },
+            {
+              "type": "paragraph",
+              "text": "The Tool and ToolMessage interfaces make it possible to distinguish between the parts of the tool output meant for the model (this is the ToolMessage.content) and those parts which are meant for use outside the model (ToolMessage.artifact)."
+            },
+            {
+              "type": "paragraph",
+              "text": "This functionality was added in langchain-core == 0.2.19. Please make sure your package is up to date."
+            },
+            {
+              "type": "paragraph",
+              "text": "If we want our tool to distinguish between message content and other artifacts, we need to specify response_format=\"content_and_artifact\" when defining our tool and make sure that we return a tuple of (content, artifact):"
+            },
+            {
+              "type": "code",
+              "code": "import randomfrom typing import List, Tuplefrom langchain_core.tools import tool@tool(response_format=\"content_and_artifact\")def generate_random_ints(min: int, max: int, size: int) -> Tuple[str, List[int]]:    \"\"\"Generate size random ints in the range [min, max].\"\"\"    array = [random.randint(min, max) for _ in range(size)]    content = f\"Successfully generated array of {size} random ints in [{min}, {max}].\"    return content, array"
+            },
+            {
+              "type": "paragraph",
+              "text": "If we invoke our tool directly with the tool arguments, we'll get back just the content part of the output:"
+            },
+            {
+              "type": "code",
+              "code": "generate_random_ints.invoke({\"min\": 0, \"max\": 9, \"size\": 10})"
+            },
+            {
+              "type": "code",
+              "code": "'Successfully generated array of 10 random ints in [0, 9].'"
+            },
+            {
+              "type": "paragraph",
+              "text": "If we invoke our tool with a ToolCall (like the ones generated by tool-calling models), we'll get back a ToolMessage that contains both the content and artifact generated by the Tool:"
+            },
+            {
+              "type": "code",
+              "code": "generate_random_ints.invoke(    {        \"name\": \"generate_random_ints\",        \"args\": {\"min\": 0, \"max\": 9, \"size\": 10},        \"id\": \"123\",  # required        \"type\": \"tool_call\",  # required    })"
+            },
+            {
+              "type": "code",
+              "code": "ToolMessage(content='Successfully generated array of 10 random ints in [0, 9].', name='generate_random_ints', tool_call_id='123', artifact=[4, 8, 2, 4, 1, 0, 9, 5, 8, 1])"
+            },
+            {
+              "type": "paragraph",
+              "text": "We can do the same when subclassing BaseTool:"
+            },
+            {
+              "type": "code",
+              "code": "from langchain_core.tools import BaseToolclass GenerateRandomFloats(BaseTool):    name: str = \"generate_random_floats\"    description: str = \"Generate size random floats in the range [min, max].\"    response_format: str = \"content_and_artifact\"    ndigits: int = 2    def _run(self, min: float, max: float, size: int) -> Tuple[str, List[float]]:        range_ = max - min        array = [            round(min + (range_ * random.random()), ndigits=self.ndigits)            for _ in range(size)        ]        content = f\"Generated {size} floats in [{min}, {max}], rounded to {self.ndigits} decimals.\"        return content, array    # Optionally define an equivalent async method    # async def _arun(self, min: float, max: float, size: int) -> Tuple[str, List[float]]:    #     ..."
+            },
+            {
+              "type": "code",
+              "code": "rand_gen = GenerateRandomFloats(ndigits=4)rand_gen.invoke(    {        \"name\": \"generate_random_floats\",        \"args\": {\"min\": 0.1, \"max\": 3.3333, \"size\": 3},        \"id\": \"123\",        \"type\": \"tool_call\",    })"
+            },
+            {
+              "type": "code",
+              "code": "ToolMessage(content='Generated 3 floats in [0.1, 3.3333], rounded to 4 decimals.', name='generate_random_floats', tool_call_id='123', artifact=[1.5566, 0.5134, 2.7914])"
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "@tool decorator",
+                "StructuredTool"
+              ]
+            }
+          ],
+          "children": []
+        }
+      ]
+    }
+  ]
+}

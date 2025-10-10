@@ -1,0 +1,196 @@
+{
+  "provenance": {
+    "url_final": "https://python.langchain.com/docs/how_to/tool_artifacts/",
+    "title": "How to return artifacts from a tool | 🦜️🔗 LangChain",
+    "fetched_at": "2025-10-06T21:56:32.527496"
+  },
+  "sections": [
+    {
+      "level": 1,
+      "heading_text": "How to return artifacts from a tool | 🦜️🔗 LangChain",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "This guide assumes familiarity with the following concepts:"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "ToolMessage",
+            "Tools",
+            "Function/tool calling"
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Tools are utilities that can be called by a model, and whose outputs are designed to be fed back to a model. Sometimes, however, there are artifacts of a tool's execution that we want to make accessible to downstream components in our chain or agent, but that we don't want to expose to the model itself. For example if a tool returns a custom object, a dataframe or an image, we may want to pass some metadata about this output to the model without passing the actual output to the model. At the same time, we may want to be able to access this full output elsewhere, for example in downstream tools."
+        },
+        {
+          "type": "paragraph",
+          "text": "The Tool and ToolMessage interfaces make it possible to distinguish between the parts of the tool output meant for the model (this is the ToolMessage.content) and those parts which are meant for use outside the model (ToolMessage.artifact)."
+        },
+        {
+          "type": "paragraph",
+          "text": "This functionality was added in langchain-core == 0.2.19. Please make sure your package is up to date."
+        }
+      ],
+      "children": [
+        {
+          "level": 2,
+          "heading_text": "Defining the tool​",
+          "anchor": "defining-the-tool",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "If we want our tool to distinguish between message content and other artifacts, we need to specify response_format=\"content_and_artifact\" when defining our tool and make sure that we return a tuple of (content, artifact):"
+            },
+            {
+              "type": "code",
+              "code": "%pip install -qU \"langchain-core>=0.2.19\""
+            },
+            {
+              "type": "code",
+              "code": "import randomfrom typing import List, Tuplefrom langchain_core.tools import tool@tool(response_format=\"content_and_artifact\")def generate_random_ints(min: int, max: int, size: int) -> Tuple[str, List[int]]:    \"\"\"Generate size random ints in the range [min, max].\"\"\"    array = [random.randint(min, max) for _ in range(size)]    content = f\"Successfully generated array of {size} random ints in [{min}, {max}].\"    return content, array"
+            }
+          ],
+          "children": []
+        },
+        {
+          "level": 2,
+          "heading_text": "Invoking the tool with ToolCall​",
+          "anchor": "invoking-the-tool-with-toolcall",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "If we directly invoke our tool with just the tool arguments, you'll notice that we only get back the content part of the Tool output:"
+            },
+            {
+              "type": "code",
+              "code": "generate_random_ints.invoke({\"min\": 0, \"max\": 9, \"size\": 10})"
+            },
+            {
+              "type": "code",
+              "code": "'Successfully generated array of 10 random ints in [0, 9].'"
+            },
+            {
+              "type": "paragraph",
+              "text": "In order to get back both the content and the artifact, we need to invoke our model with a ToolCall (which is just a dictionary with \"name\", \"args\", \"id\" and \"type\" keys), which has additional info needed to generate a ToolMessage like the tool call ID:"
+            },
+            {
+              "type": "code",
+              "code": "generate_random_ints.invoke(    {        \"name\": \"generate_random_ints\",        \"args\": {\"min\": 0, \"max\": 9, \"size\": 10},        \"id\": \"123\",  # required        \"type\": \"tool_call\",  # required    })"
+            },
+            {
+              "type": "code",
+              "code": "ToolMessage(content='Successfully generated array of 10 random ints in [0, 9].', name='generate_random_ints', tool_call_id='123', artifact=[2, 8, 0, 6, 0, 0, 1, 5, 0, 0])"
+            }
+          ],
+          "children": []
+        },
+        {
+          "level": 2,
+          "heading_text": "Using with a model​",
+          "anchor": "using-with-a-model",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "With a tool-calling model, we can easily use a model to call our Tool and generate ToolMessages:"
+            },
+            {
+              "type": "code",
+              "code": "pip install -qU \"langchain[google-genai]\""
+            },
+            {
+              "type": "code",
+              "code": "import getpassimport osif not os.environ.get(\"GOOGLE_API_KEY\"):  os.environ[\"GOOGLE_API_KEY\"] = getpass.getpass(\"Enter API key for Google Gemini: \")from langchain.chat_models import init_chat_modelllm = init_chat_model(\"gemini-2.5-flash\", model_provider=\"google_genai\")"
+            },
+            {
+              "type": "code",
+              "code": "llm_with_tools = llm.bind_tools([generate_random_ints])ai_msg = llm_with_tools.invoke(\"generate 6 positive ints less than 25\")ai_msg.tool_calls"
+            },
+            {
+              "type": "code",
+              "code": "[{'name': 'generate_random_ints',  'args': {'min': 1, 'max': 24, 'size': 6},  'id': 'toolu_01EtALY3Wz1DVYhv1TLvZGvE',  'type': 'tool_call'}]"
+            },
+            {
+              "type": "code",
+              "code": "generate_random_ints.invoke(ai_msg.tool_calls[0])"
+            },
+            {
+              "type": "code",
+              "code": "ToolMessage(content='Successfully generated array of 6 random ints in [1, 24].', name='generate_random_ints', tool_call_id='toolu_01EtALY3Wz1DVYhv1TLvZGvE', artifact=[2, 20, 23, 8, 1, 15])"
+            },
+            {
+              "type": "paragraph",
+              "text": "If we just pass in the tool call args, we'll only get back the content:"
+            },
+            {
+              "type": "code",
+              "code": "generate_random_ints.invoke(ai_msg.tool_calls[0][\"args\"])"
+            },
+            {
+              "type": "code",
+              "code": "'Successfully generated array of 6 random ints in [1, 24].'"
+            },
+            {
+              "type": "paragraph",
+              "text": "If we wanted to declaratively create a chain, we could do this:"
+            },
+            {
+              "type": "code",
+              "code": "from operator import attrgetterchain = llm_with_tools | attrgetter(\"tool_calls\") | generate_random_ints.map()chain.invoke(\"give me a random number between 1 and 5\")"
+            },
+            {
+              "type": "code",
+              "code": "[ToolMessage(content='Successfully generated array of 1 random ints in [1, 5].', name='generate_random_ints', tool_call_id='toolu_01FwYhnkwDPJPbKdGq4ng6uD', artifact=[5])]"
+            }
+          ],
+          "children": []
+        },
+        {
+          "level": 2,
+          "heading_text": "Creating from BaseTool class​",
+          "anchor": "creating-from-basetool-class",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "If you want to create a BaseTool object directly, instead of decorating a function with @tool, you can do so like this:"
+            },
+            {
+              "type": "code",
+              "code": "from langchain_core.tools import BaseToolclass GenerateRandomFloats(BaseTool):    name: str = \"generate_random_floats\"    description: str = \"Generate size random floats in the range [min, max].\"    response_format: str = \"content_and_artifact\"    ndigits: int = 2    def _run(self, min: float, max: float, size: int) -> Tuple[str, List[float]]:        range_ = max - min        array = [            round(min + (range_ * random.random()), ndigits=self.ndigits)            for _ in range(size)        ]        content = f\"Generated {size} floats in [{min}, {max}], rounded to {self.ndigits} decimals.\"        return content, array    # Optionally define an equivalent async method    # async def _arun(self, min: float, max: float, size: int) -> Tuple[str, List[float]]:    #     ..."
+            },
+            {
+              "type": "code",
+              "code": "rand_gen = GenerateRandomFloats(ndigits=4)rand_gen.invoke({\"min\": 0.1, \"max\": 3.3333, \"size\": 3})"
+            },
+            {
+              "type": "code",
+              "code": "'Generated 3 floats in [0.1, 3.3333], rounded to 4 decimals.'"
+            },
+            {
+              "type": "code",
+              "code": "rand_gen.invoke(    {        \"name\": \"generate_random_floats\",        \"args\": {\"min\": 0.1, \"max\": 3.3333, \"size\": 3},        \"id\": \"123\",        \"type\": \"tool_call\",    })"
+            },
+            {
+              "type": "code",
+              "code": "ToolMessage(content='Generated 3 floats in [0.1, 3.3333], rounded to 4 decimals.', name='generate_random_floats', tool_call_id='123', artifact=[1.5789, 2.464, 2.2719])"
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "Defining the tool",
+                "Invoking the tool with ToolCall",
+                "Using with a model",
+                "Creating from BaseTool class"
+              ]
+            }
+          ],
+          "children": []
+        }
+      ]
+    }
+  ]
+}

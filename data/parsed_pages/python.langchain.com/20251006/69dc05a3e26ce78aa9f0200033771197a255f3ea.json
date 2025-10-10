@@ -1,0 +1,106 @@
+{
+  "provenance": {
+    "url_final": "https://python.langchain.com/docs/how_to/streaming_llm/",
+    "title": "How to stream responses from an LLM | 🦜️🔗 LangChain",
+    "fetched_at": "2025-10-06T21:56:29.669571"
+  },
+  "sections": [
+    {
+      "level": 1,
+      "heading_text": "How to stream responses from an LLM | 🦜️🔗 LangChain",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "All LLMs implement the Runnable interface, which comes with default implementations of standard runnable methods (i.e. ainvoke, batch, abatch, stream, astream, astream_events)."
+        },
+        {
+          "type": "paragraph",
+          "text": "The default streaming implementations provide anIterator (or AsyncIterator for asynchronous streaming) that yields a single value: the final output from the underlying chat model provider."
+        },
+        {
+          "type": "paragraph",
+          "text": "The ability to stream the output token-by-token depends on whether the provider has implemented proper streaming support."
+        },
+        {
+          "type": "paragraph",
+          "text": "See which integrations support token-by-token streaming here."
+        },
+        {
+          "type": "paragraph",
+          "text": "The default implementation does not provide support for token-by-token streaming, but it ensures that the model can be swapped in for any other model as it supports the same standard interface."
+        }
+      ],
+      "children": [
+        {
+          "level": 2,
+          "heading_text": "Sync stream​",
+          "anchor": "sync-stream",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "Below we use a | to help visualize the delimiter between tokens."
+            },
+            {
+              "type": "code",
+              "code": "from langchain_openai import OpenAIllm = OpenAI(model=\"gpt-3.5-turbo-instruct\", temperature=0, max_tokens=512)for chunk in llm.stream(\"Write me a 1 verse song about sparkling water.\"):    print(chunk, end=\"|\", flush=True)"
+            },
+            {
+              "type": "code",
+              "code": "|Spark|ling| water|,| oh| so clear||Bubbles dancing|,| without| fear||Refreshing| taste|,| a| pure| delight||Spark|ling| water|,| my| thirst|'s| delight||"
+            }
+          ],
+          "children": []
+        },
+        {
+          "level": 2,
+          "heading_text": "Async streaming​",
+          "anchor": "async-streaming",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "Let's see how to stream in an async setting using astream."
+            },
+            {
+              "type": "code",
+              "code": "from langchain_openai import OpenAIllm = OpenAI(model=\"gpt-3.5-turbo-instruct\", temperature=0, max_tokens=512)async for chunk in llm.astream(\"Write me a 1 verse song about sparkling water.\"):    print(chunk, end=\"|\", flush=True)"
+            },
+            {
+              "type": "code",
+              "code": "|Spark|ling| water|,| oh| so clear||Bubbles dancing|,| without| fear||Refreshing| taste|,| a| pure| delight||Spark|ling| water|,| my| thirst|'s| delight||"
+            }
+          ],
+          "children": []
+        },
+        {
+          "level": 2,
+          "heading_text": "Async event streaming​",
+          "anchor": "async-event-streaming",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "LLMs also support the standard astream events method."
+            },
+            {
+              "type": "paragraph",
+              "text": "astream_events is most useful when implementing streaming in a larger LLM application that contains multiple steps (e.g., an application that involves an agent)."
+            },
+            {
+              "type": "code",
+              "code": "from langchain_openai import OpenAIllm = OpenAI(model=\"gpt-3.5-turbo-instruct\", temperature=0, max_tokens=512)idx = 0async for event in llm.astream_events(    \"Write me a 1 verse song about goldfish on the moon\", version=\"v1\"):    idx += 1    if idx >= 5:  # Truncate the output        print(\"...Truncated\")        break    print(event)"
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "Sync stream",
+                "Async streaming",
+                "Async event streaming"
+              ]
+            }
+          ],
+          "children": []
+        }
+      ]
+    }
+  ]
+}

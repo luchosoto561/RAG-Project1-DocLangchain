@@ -1,0 +1,179 @@
+{
+  "provenance": {
+    "url_final": "https://python.langchain.com/docs/how_to/qa_per_user/",
+    "title": "How to do per-user retrieval | 🦜️🔗 LangChain",
+    "fetched_at": "2025-10-06T21:56:10.894554"
+  },
+  "sections": [
+    {
+      "level": 1,
+      "heading_text": "How to do per-user retrieval | 🦜️🔗 LangChain",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "This guide demonstrates how to configure runtime properties of a retrieval chain. An example application is to limit the documents available to a retriever based on the user."
+        },
+        {
+          "type": "paragraph",
+          "text": "When building a retrieval app, you often have to build it with multiple users in mind. This means that you may be storing data not just for one user, but for many different users, and they should not be able to see eachother's data. This means that you need to be able to configure your retrieval chain to only retrieve certain information. This generally involves two steps."
+        },
+        {
+          "type": "paragraph",
+          "text": "Step 1: Make sure the retriever you are using supports multiple users"
+        },
+        {
+          "type": "paragraph",
+          "text": "At the moment, there is no unified flag or filter for this in LangChain. Rather, each vectorstore and retriever may have their own, and may be called different things (namespaces, multi-tenancy, etc). For vectorstores, this is generally exposed as a keyword argument that is passed in during similarity_search. By reading the documentation or source code, figure out whether the retriever you are using supports multiple users, and, if so, how to use it."
+        },
+        {
+          "type": "paragraph",
+          "text": "Note: adding documentation and/or support for multiple users for retrievers that do not support it (or document it) is a GREAT way to contribute to LangChain"
+        },
+        {
+          "type": "paragraph",
+          "text": "Step 2: Add that parameter as a configurable field for the chain"
+        },
+        {
+          "type": "paragraph",
+          "text": "This will let you easily call the chain and configure any relevant flags at runtime. See this documentation for more information on configuration."
+        },
+        {
+          "type": "paragraph",
+          "text": "Now, at runtime you can call this chain with configurable field."
+        }
+      ],
+      "children": [
+        {
+          "level": 2,
+          "heading_text": "Code Example​",
+          "anchor": "code-example",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "Let's see a concrete example of what this looks like in code. We will use Pinecone for this example."
+            },
+            {
+              "type": "paragraph",
+              "text": "To configure Pinecone, set the following environment variable:"
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "PINECONE_API_KEY: Your Pinecone API key"
+              ]
+            },
+            {
+              "type": "code",
+              "code": "from langchain_openai import OpenAIEmbeddingsfrom langchain_pinecone import PineconeVectorStoreembeddings = OpenAIEmbeddings()vectorstore = PineconeVectorStore(index_name=\"test-example\", embedding=embeddings)vectorstore.add_texts([\"I worked at Kensho\"], namespace=\"harrison\")vectorstore.add_texts([\"I worked at Facebook\"], namespace=\"ankush\")"
+            },
+            {
+              "type": "code",
+              "code": "['f907aab7-77c7-4347-acc2-6859f8142f92']"
+            },
+            {
+              "type": "paragraph",
+              "text": "The pinecone kwarg for namespace can be used to separate documents"
+            },
+            {
+              "type": "code",
+              "code": "# This will only get documents for Ankushvectorstore.as_retriever(search_kwargs={\"namespace\": \"ankush\"}).invoke(    \"where did i work?\")"
+            },
+            {
+              "type": "code",
+              "code": "[Document(id='f907aab7-77c7-4347-acc2-6859f8142f92', metadata={}, page_content='I worked at Facebook')]"
+            },
+            {
+              "type": "code",
+              "code": "# This will only get documents for Harrisonvectorstore.as_retriever(search_kwargs={\"namespace\": \"harrison\"}).invoke(    \"where did i work?\")"
+            },
+            {
+              "type": "code",
+              "code": "[Document(id='16061fc5-c6fc-4f45-a3b3-23469d7996af', metadata={}, page_content='I worked at Kensho')]"
+            },
+            {
+              "type": "paragraph",
+              "text": "We can now create the chain that we will use to do question-answering over."
+            },
+            {
+              "type": "paragraph",
+              "text": "Let's first select a LLM."
+            },
+            {
+              "type": "code",
+              "code": "pip install -qU \"langchain[google-genai]\""
+            },
+            {
+              "type": "code",
+              "code": "import getpassimport osif not os.environ.get(\"GOOGLE_API_KEY\"):  os.environ[\"GOOGLE_API_KEY\"] = getpass.getpass(\"Enter API key for Google Gemini: \")from langchain.chat_models import init_chat_modelllm = init_chat_model(\"gemini-2.5-flash\", model_provider=\"google_genai\")"
+            },
+            {
+              "type": "paragraph",
+              "text": "This will follow the basic implementation from the RAG tutorial, but we will allow the retrieval step to be configurable."
+            },
+            {
+              "type": "code",
+              "code": "from langchain_core.prompts import ChatPromptTemplatefrom langchain_core.runnables import ConfigurableFieldtemplate = \"\"\"Answer the question based only on the following context:{context}Question: {question}\"\"\"prompt = ChatPromptTemplate.from_template(template)retriever = vectorstore.as_retriever()"
+            },
+            {
+              "type": "paragraph",
+              "text": "Here we mark the retriever as having a configurable field. All vectorstore retrievers have search_kwargs as a field. This is just a dictionary, with vectorstore specific fields."
+            },
+            {
+              "type": "paragraph",
+              "text": "This will let us pass in a value for search_kwargs when invoking the chain."
+            },
+            {
+              "type": "code",
+              "code": "configurable_retriever = retriever.configurable_fields(    search_kwargs=ConfigurableField(        id=\"search_kwargs\",        name=\"Search Kwargs\",        description=\"The search kwargs to use\",    ))"
+            },
+            {
+              "type": "paragraph",
+              "text": "We can now create the chain using our configurable retriever."
+            },
+            {
+              "type": "code",
+              "code": "from langchain_core.documents import Documentfrom langchain_core.runnables import RunnableConfigfrom langgraph.graph import START, StateGraphfrom typing_extensions import List, TypedDictclass State(TypedDict):    question: str    context: List[Document]    answer: strdef retrieve(state: State, config: RunnableConfig):    retrieved_docs = configurable_retriever.invoke(state[\"question\"], config)    return {\"context\": retrieved_docs}def generate(state: State):    docs_content = \"\\n\\n\".join(doc.page_content for doc in state[\"context\"])    messages = prompt.invoke({\"question\": state[\"question\"], \"context\": docs_content})    response = llm.invoke(messages)    return {\"answer\": response.content}graph_builder = StateGraph(State).add_sequence([retrieve, generate])graph_builder.add_edge(START, \"retrieve\")graph = graph_builder.compile()"
+            },
+            {
+              "type": "code",
+              "code": "from IPython.display import Image, displaydisplay(Image(graph.get_graph().draw_mermaid_png()))"
+            },
+            {
+              "type": "paragraph",
+              "text": "We can now invoke the chain with configurable options. search_kwargs is the id of the configurable field. The value is the search kwargs to use for Pinecone."
+            },
+            {
+              "type": "code",
+              "code": "result = graph.invoke(    {\"question\": \"Where did the user work?\"},    config={\"configurable\": {\"search_kwargs\": {\"namespace\": \"harrison\"}}},)result"
+            },
+            {
+              "type": "code",
+              "code": "{'question': 'Where did the user work?', 'context': [Document(id='16061fc5-c6fc-4f45-a3b3-23469d7996af', metadata={}, page_content='I worked at Kensho')], 'answer': 'The user worked at Kensho.'}"
+            },
+            {
+              "type": "code",
+              "code": "result = graph.invoke(    {\"question\": \"Where did the user work?\"},    config={\"configurable\": {\"search_kwargs\": {\"namespace\": \"ankush\"}}},)result"
+            },
+            {
+              "type": "code",
+              "code": "{'question': 'Where did the user work?', 'context': [Document(id='f907aab7-77c7-4347-acc2-6859f8142f92', metadata={}, page_content='I worked at Facebook')], 'answer': 'The user worked at Facebook.'}"
+            },
+            {
+              "type": "paragraph",
+              "text": "For details operating your specific vector store, see the integration pages."
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "Code Example"
+              ]
+            }
+          ],
+          "children": []
+        }
+      ]
+    }
+  ]
+}

@@ -16,7 +16,7 @@ from typing import Dict, Iterable, Iterator, List, Union
 
 # Importa SOLO lo necesario del core del parser (lógica pura, sin I/O).
 # La implementaremos luego en parser/core.py con la firma indicada.
-from parser.core import parse_document  # type: ignore
+from core import parse_document  # type: ignore
 
 # recibe en nuestro caso la url_final
 def _sha1(text: str) -> str:

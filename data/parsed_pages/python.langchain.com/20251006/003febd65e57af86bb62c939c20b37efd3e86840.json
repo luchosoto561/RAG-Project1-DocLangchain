@@ -1,0 +1,72 @@
+{
+  "provenance": {
+    "url_final": "https://python.langchain.com/docs/how_to/dynamic_chain/",
+    "title": "How to create a dynamic (self-constructing) chain | 🦜️🔗 LangChain",
+    "fetched_at": "2025-10-06T21:55:28.910496"
+  },
+  "sections": [
+    {
+      "level": 1,
+      "heading_text": "How to create a dynamic (self-constructing) chain | 🦜️🔗 LangChain",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "This guide assumes familiarity with the following:"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "LangChain Expression Language (LCEL)",
+            "How to turn any function into a runnable"
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Sometimes we want to construct parts of a chain at runtime, depending on the chain inputs (routing is the most common example of this). We can create dynamic chains like this using a very useful property of RunnableLambda's, which is that if a RunnableLambda returns a Runnable, that Runnable is itself invoked. Let's see an example."
+        },
+        {
+          "type": "code",
+          "code": "pip install -qU \"langchain[google-genai]\""
+        },
+        {
+          "type": "code",
+          "code": "import getpassimport osif not os.environ.get(\"GOOGLE_API_KEY\"):  os.environ[\"GOOGLE_API_KEY\"] = getpass.getpass(\"Enter API key for Google Gemini: \")from langchain.chat_models import init_chat_modelllm = init_chat_model(\"gemini-2.5-flash\", model_provider=\"google_genai\")"
+        },
+        {
+          "type": "code",
+          "code": "# | echo: falsefrom langchain_anthropic import ChatAnthropicllm = ChatAnthropic(model=\"claude-3-7-sonnet-20250219\")"
+        },
+        {
+          "type": "code",
+          "code": "from operator import itemgetterfrom langchain_core.output_parsers import StrOutputParserfrom langchain_core.prompts import ChatPromptTemplatefrom langchain_core.runnables import Runnable, RunnablePassthrough, chaincontextualize_instructions = \"\"\"Convert the latest user question into a standalone question given the chat history. Don't answer the question, return the question and nothing else (no descriptive text).\"\"\"contextualize_prompt = ChatPromptTemplate.from_messages(    [        (\"system\", contextualize_instructions),        (\"placeholder\", \"{chat_history}\"),        (\"human\", \"{question}\"),    ])contextualize_question = contextualize_prompt | llm | StrOutputParser()qa_instructions = (    \"\"\"Answer the user question given the following context:\\n\\n{context}.\"\"\")qa_prompt = ChatPromptTemplate.from_messages(    [(\"system\", qa_instructions), (\"human\", \"{question}\")])@chaindef contextualize_if_needed(input_: dict) -> Runnable:    if input_.get(\"chat_history\"):        # NOTE: This is returning another Runnable, not an actual output.        return contextualize_question    else:        return RunnablePassthrough() | itemgetter(\"question\")@chaindef fake_retriever(input_: dict) -> str:    return \"egypt's population in 2024 is about 111 million\"full_chain = (    RunnablePassthrough.assign(question=contextualize_if_needed).assign(        context=fake_retriever    )    | qa_prompt    | llm    | StrOutputParser())full_chain.invoke(    {        \"question\": \"what about egypt\",        \"chat_history\": [            (\"human\", \"what's the population of indonesia\"),            (\"ai\", \"about 276 million\"),        ],    })"
+        },
+        {
+          "type": "code",
+          "code": "\"Egypt's population in 2024 is about 111 million.\""
+        },
+        {
+          "type": "paragraph",
+          "text": "The key here is that contextualize_if_needed returns another Runnable and not an actual output. This returned Runnable is itself run when the full chain is executed."
+        },
+        {
+          "type": "paragraph",
+          "text": "Looking at the trace we can see that, since we passed in chat_history, we executed the contextualize_question chain as part of the full chain: https://smith.langchain.com/public/9e0ae34c-4082-4f3f-beed-34a2a2f4c991/r"
+        },
+        {
+          "type": "paragraph",
+          "text": "Note that the streaming, batching, etc. capabilities of the returned Runnable are all preserved"
+        },
+        {
+          "type": "code",
+          "code": "for chunk in contextualize_if_needed.stream(    {        \"question\": \"what about egypt\",        \"chat_history\": [            (\"human\", \"what's the population of indonesia\"),            (\"ai\", \"about 276 million\"),        ],    }):    print(chunk)"
+        },
+        {
+          "type": "code",
+          "code": "What is the population of Egypt?"
+        }
+      ],
+      "children": []
+    }
+  ]
+}

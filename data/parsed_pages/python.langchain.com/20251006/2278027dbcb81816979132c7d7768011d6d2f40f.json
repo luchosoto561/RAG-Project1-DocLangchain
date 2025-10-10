@@ -1,0 +1,227 @@
+{
+  "provenance": {
+    "url_final": "https://python.langchain.com/docs/how_to/custom_llm/",
+    "title": "How to create a custom LLM class | 🦜️🔗 LangChain",
+    "fetched_at": "2025-10-06T21:55:15.349107"
+  },
+  "sections": [
+    {
+      "level": 1,
+      "heading_text": "How to create a custom LLM class | 🦜️🔗 LangChain",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "This notebook goes over how to create a custom LLM wrapper, in case you want to use your own LLM or a different wrapper than one that is supported in LangChain."
+        },
+        {
+          "type": "paragraph",
+          "text": "Wrapping your LLM with the standard LLM interface allow you to use your LLM in existing LangChain programs with minimal code modifications."
+        },
+        {
+          "type": "paragraph",
+          "text": "As an bonus, your LLM will automatically become a LangChain Runnable and will benefit from some optimizations out of the box, async support, the astream_events API, etc."
+        },
+        {
+          "type": "paragraph",
+          "text": "You are currently on a page documenting the use of text completion models. Many of the latest and most popular models are chat completion models."
+        },
+        {
+          "type": "paragraph",
+          "text": "Unless you are specifically using more advanced prompting techniques, you are probably looking for this page instead."
+        }
+      ],
+      "children": [
+        {
+          "level": 2,
+          "heading_text": "Implementation​",
+          "anchor": "implementation",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "There are only two required things that a custom LLM needs to implement:"
+            },
+            {
+              "type": "paragraph",
+              "text": "Optional implementations:"
+            },
+            {
+              "type": "paragraph",
+              "text": "Let's implement a simple custom LLM that just returns the first n characters of the input."
+            },
+            {
+              "type": "code",
+              "code": "from typing import Any, Dict, Iterator, List, Mapping, Optionalfrom langchain_core.callbacks.manager import CallbackManagerForLLMRunfrom langchain_core.language_models.llms import LLMfrom langchain_core.outputs import GenerationChunkclass CustomLLM(LLM):    \"\"\"A custom chat model that echoes the first `n` characters of the input.    When contributing an implementation to LangChain, carefully document    the model including the initialization parameters, include    an example of how to initialize the model and include any relevant    links to the underlying models documentation or API.    Example:        .. code-block:: python            model = CustomChatModel(n=2)            result = model.invoke([HumanMessage(content=\"hello\")])            result = model.batch([[HumanMessage(content=\"hello\")],                                 [HumanMessage(content=\"world\")]])    \"\"\"    n: int    \"\"\"The number of characters from the last message of the prompt to be echoed.\"\"\"    def _call(        self,        prompt: str,        stop: Optional[List[str]] = None,        run_manager: Optional[CallbackManagerForLLMRun] = None,        **kwargs: Any,    ) -> str:        \"\"\"Run the LLM on the given input.        Override this method to implement the LLM logic.        Args:            prompt: The prompt to generate from.            stop: Stop words to use when generating. Model output is cut off at the                first occurrence of any of the stop substrings.                If stop tokens are not supported consider raising NotImplementedError.            run_manager: Callback manager for the run.            **kwargs: Arbitrary additional keyword arguments. These are usually passed                to the model provider API call.        Returns:            The model output as a string. Actual completions SHOULD NOT include the prompt.        \"\"\"        if stop is not None:            raise ValueError(\"stop kwargs are not permitted.\")        return prompt[: self.n]    def _stream(        self,        prompt: str,        stop: Optional[List[str]] = None,        run_manager: Optional[CallbackManagerForLLMRun] = None,        **kwargs: Any,    ) -> Iterator[GenerationChunk]:        \"\"\"Stream the LLM on the given prompt.        This method should be overridden by subclasses that support streaming.        If not implemented, the default behavior of calls to stream will be to        fallback to the non-streaming version of the model and return        the output as a single chunk.        Args:            prompt: The prompt to generate from.            stop: Stop words to use when generating. Model output is cut off at the                first occurrence of any of these substrings.            run_manager: Callback manager for the run.            **kwargs: Arbitrary additional keyword arguments. These are usually passed                to the model provider API call.        Returns:            An iterator of GenerationChunks.        \"\"\"        for char in prompt[: self.n]:            chunk = GenerationChunk(text=char)            if run_manager:                run_manager.on_llm_new_token(chunk.text, chunk=chunk)            yield chunk    @property    def _identifying_params(self) -> Dict[str, Any]:        \"\"\"Return a dictionary of identifying parameters.\"\"\"        return {            # The model name allows users to specify custom token counting            # rules in LLM monitoring applications (e.g., in LangSmith users            # can provide per token pricing for their model and monitor            # costs for the given LLM.)            \"model_name\": \"CustomChatModel\",        }    @property    def _llm_type(self) -> str:        \"\"\"Get the type of language model used by this chat model. Used for logging purposes only.\"\"\"        return \"custom\""
+            }
+          ],
+          "children": [
+            {
+              "level": 3,
+              "heading_text": "Let's test it 🧪​",
+              "anchor": "lets-test-it-",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "This LLM will implement the standard Runnable interface of LangChain which many of the LangChain abstractions support!"
+                },
+                {
+                  "type": "code",
+                  "code": "llm = CustomLLM(n=5)print(llm)"
+                },
+                {
+                  "type": "code",
+                  "code": "\u001b[1mCustomLLM\u001b[0mParams: {'model_name': 'CustomChatModel'}"
+                },
+                {
+                  "type": "code",
+                  "code": "llm.invoke(\"This is a foobar thing\")"
+                },
+                {
+                  "type": "code",
+                  "code": "'This '"
+                },
+                {
+                  "type": "code",
+                  "code": "await llm.ainvoke(\"world\")"
+                },
+                {
+                  "type": "code",
+                  "code": "'world'"
+                },
+                {
+                  "type": "code",
+                  "code": "llm.batch([\"woof woof woof\", \"meow meow meow\"])"
+                },
+                {
+                  "type": "code",
+                  "code": "['woof ', 'meow ']"
+                },
+                {
+                  "type": "code",
+                  "code": "await llm.abatch([\"woof woof woof\", \"meow meow meow\"])"
+                },
+                {
+                  "type": "code",
+                  "code": "['woof ', 'meow ']"
+                },
+                {
+                  "type": "code",
+                  "code": "async for token in llm.astream(\"hello\"):    print(token, end=\"|\", flush=True)"
+                },
+                {
+                  "type": "code",
+                  "code": "h|e|l|l|o|"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Let's confirm that in integrates nicely with other LangChain APIs."
+                },
+                {
+                  "type": "code",
+                  "code": "from langchain_core.prompts import ChatPromptTemplate"
+                },
+                {
+                  "type": "code",
+                  "code": "prompt = ChatPromptTemplate.from_messages(    [(\"system\", \"you are a bot\"), (\"human\", \"{input}\")])"
+                },
+                {
+                  "type": "code",
+                  "code": "llm = CustomLLM(n=7)chain = prompt | llm"
+                },
+                {
+                  "type": "code",
+                  "code": "idx = 0async for event in chain.astream_events({\"input\": \"hello there!\"}, version=\"v1\"):    print(event)    idx += 1    if idx > 7:        # Truncate        break"
+                },
+                {
+                  "type": "code",
+                  "code": "{'event': 'on_chain_start', 'run_id': '05f24b4f-7ea3-4fb6-8417-3aa21633462f', 'name': 'RunnableSequence', 'tags': [], 'metadata': {}, 'data': {'input': {'input': 'hello there!'}}}{'event': 'on_prompt_start', 'name': 'ChatPromptTemplate', 'run_id': '7e996251-a926-4344-809e-c425a9846d21', 'tags': ['seq:step:1'], 'metadata': {}, 'data': {'input': {'input': 'hello there!'}}}{'event': 'on_prompt_end', 'name': 'ChatPromptTemplate', 'run_id': '7e996251-a926-4344-809e-c425a9846d21', 'tags': ['seq:step:1'], 'metadata': {}, 'data': {'input': {'input': 'hello there!'}, 'output': ChatPromptValue(messages=[SystemMessage(content='you are a bot'), HumanMessage(content='hello there!')])}}{'event': 'on_llm_start', 'name': 'CustomLLM', 'run_id': 'a8766beb-10f4-41de-8750-3ea7cf0ca7e2', 'tags': ['seq:step:2'], 'metadata': {}, 'data': {'input': {'prompts': ['System: you are a bot\\nHuman: hello there!']}}}{'event': 'on_llm_stream', 'name': 'CustomLLM', 'run_id': 'a8766beb-10f4-41de-8750-3ea7cf0ca7e2', 'tags': ['seq:step:2'], 'metadata': {}, 'data': {'chunk': 'S'}}{'event': 'on_chain_stream', 'run_id': '05f24b4f-7ea3-4fb6-8417-3aa21633462f', 'tags': [], 'metadata': {}, 'name': 'RunnableSequence', 'data': {'chunk': 'S'}}{'event': 'on_llm_stream', 'name': 'CustomLLM', 'run_id': 'a8766beb-10f4-41de-8750-3ea7cf0ca7e2', 'tags': ['seq:step:2'], 'metadata': {}, 'data': {'chunk': 'y'}}{'event': 'on_chain_stream', 'run_id': '05f24b4f-7ea3-4fb6-8417-3aa21633462f', 'tags': [], 'metadata': {}, 'name': 'RunnableSequence', 'data': {'chunk': 'y'}}"
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "level": 2,
+          "heading_text": "Contributing​",
+          "anchor": "contributing",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "We appreciate all chat model integration contributions."
+            },
+            {
+              "type": "paragraph",
+              "text": "Here's a checklist to help make sure your contribution gets added to LangChain:"
+            },
+            {
+              "type": "paragraph",
+              "text": "Documentation:"
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "The model contains doc-strings for all initialization arguments, as these will be surfaced in the APIReference.",
+                "The class doc-string for the model contains a link to the model API if the model is powered by a service."
+              ]
+            },
+            {
+              "type": "paragraph",
+              "text": "Tests:"
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "Add unit or integration tests to the overridden methods. Verify that invoke, ainvoke, batch, stream work if you've over-ridden the corresponding code."
+              ]
+            },
+            {
+              "type": "paragraph",
+              "text": "Streaming (if you're implementing it):"
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "Make sure to invoke the on_llm_new_token callback",
+                "on_llm_new_token is invoked BEFORE yielding the chunk"
+              ]
+            },
+            {
+              "type": "paragraph",
+              "text": "Stop Token Behavior:"
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "Stop token should be respected",
+                "Stop token should be INCLUDED as part of the response"
+              ]
+            },
+            {
+              "type": "paragraph",
+              "text": "Secret API Keys:"
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "If your model connects to an API it will likely accept API keys as part of its initialization. Use Pydantic's SecretStr type for secrets, so they don't get accidentally printed out when folks print the model."
+              ]
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "Let's test it 🧪"
+              ]
+            }
+          ],
+          "children": []
+        }
+      ]
+    }
+  ]
+}

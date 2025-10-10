@@ -1,0 +1,28 @@
+{
+  "provenance": {
+    "url_final": "https://python.langchain.com/docs/how_to/toolkits/",
+    "title": "How to use toolkits | 🦜️🔗 LangChain",
+    "fetched_at": "2025-10-06T21:54:39.472216"
+  },
+  "sections": [
+    {
+      "level": 1,
+      "heading_text": "How to use toolkits | 🦜️🔗 LangChain",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Toolkits are collections of tools that are designed to be used together for specific tasks. They have convenient loading methods."
+        },
+        {
+          "type": "paragraph",
+          "text": "All Toolkits expose a get_tools method which returns a list of tools. You can therefore do:"
+        },
+        {
+          "type": "code",
+          "code": "# Initialize a toolkittoolkit = ExampleTookit(...)# Get list of toolstools = toolkit.get_tools()# Create agentagent = create_agent_method(llm, tools, prompt)"
+        }
+      ],
+      "children": []
+    }
+  ]
+}

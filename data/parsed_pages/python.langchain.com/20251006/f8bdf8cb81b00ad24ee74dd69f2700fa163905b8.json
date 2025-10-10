@@ -1,0 +1,150 @@
+{
+  "provenance": {
+    "url_final": "https://python.langchain.com/api_reference/",
+    "title": "LangChain Python API Reference — 🦜🔗 LangChain  documentation",
+    "fetched_at": "2025-10-06T21:54:01.946056"
+  },
+  "sections": [
+    {
+      "level": 1,
+      "heading_text": "LangChain Python API Reference — 🦜🔗 LangChain  documentation",
+      "blocks": [
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "GitHub",
+            "X / Twitter"
+          ]
+        }
+      ],
+      "children": []
+    },
+    {
+      "level": 1,
+      "heading_text": "LangChain Python API Reference#",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Welcome to the LangChain Python API reference. This is a reference for all langchain-x packages."
+        },
+        {
+          "type": "paragraph",
+          "text": "For user guides see https://python.langchain.com."
+        },
+        {
+          "type": "paragraph",
+          "text": "For the legacy API reference hosted on ReadTheDocs see https://api.python.langchain.com/."
+        }
+      ],
+      "children": [
+        {
+          "level": 2,
+          "heading_text": "Base packages#",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "Core"
+            },
+            {
+              "type": "paragraph",
+              "text": "langchain-core: 0.3.76"
+            },
+            {
+              "type": "paragraph",
+              "text": "Langchain"
+            },
+            {
+              "type": "paragraph",
+              "text": "langchain: 0.3.27"
+            },
+            {
+              "type": "paragraph",
+              "text": "Text Splitters"
+            },
+            {
+              "type": "paragraph",
+              "text": "langchain-text-splitters: 0.3.11"
+            },
+            {
+              "type": "paragraph",
+              "text": "Community"
+            },
+            {
+              "type": "paragraph",
+              "text": "langchain-community: 0.3.30"
+            },
+            {
+              "type": "paragraph",
+              "text": "Standard Tests"
+            },
+            {
+              "type": "paragraph",
+              "text": "langchain-tests: 0.3.21"
+            }
+          ],
+          "children": []
+        },
+        {
+          "level": 2,
+          "heading_text": "Integrations#",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "OpenAI"
+            },
+            {
+              "type": "paragraph",
+              "text": "langchain-openai 0.3.33"
+            },
+            {
+              "type": "paragraph",
+              "text": "Anthropic"
+            },
+            {
+              "type": "paragraph",
+              "text": "langchain-anthropic 0.3.21"
+            },
+            {
+              "type": "paragraph",
+              "text": "Google VertexAI"
+            },
+            {
+              "type": "paragraph",
+              "text": "langchain-google-vertexai 2.1.2"
+            },
+            {
+              "type": "paragraph",
+              "text": "AWS"
+            },
+            {
+              "type": "paragraph",
+              "text": "langchain-aws 0.2.33"
+            },
+            {
+              "type": "paragraph",
+              "text": "Huggingface"
+            },
+            {
+              "type": "paragraph",
+              "text": "langchain-huggingface 0.3.1"
+            },
+            {
+              "type": "paragraph",
+              "text": "MistralAI"
+            },
+            {
+              "type": "paragraph",
+              "text": "langchain-mistralai 0.2.12"
+            },
+            {
+              "type": "paragraph",
+              "text": "See the full list of integrations in the Section Navigation."
+            }
+          ],
+          "children": []
+        }
+      ]
+    }
+  ]
+}

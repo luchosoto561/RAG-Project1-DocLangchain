@@ -1,0 +1,248 @@
+{
+  "provenance": {
+    "url_final": "https://python.langchain.com/docs/how_to/convert_runnable_to_tool/",
+    "title": "How to convert Runnables to Tools | 🦜️🔗 LangChain",
+    "fetched_at": "2025-10-06T21:55:11.098328"
+  },
+  "sections": [
+    {
+      "level": 1,
+      "heading_text": "How to convert Runnables to Tools | 🦜️🔗 LangChain",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "This guide assumes familiarity with the following concepts:"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "Runnables",
+            "Tools",
+            "Agents"
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Here we will demonstrate how to convert a LangChain Runnable into a tool that can be used by agents, chains, or chat models."
+        }
+      ],
+      "children": [
+        {
+          "level": 2,
+          "heading_text": "Dependencies​",
+          "anchor": "dependencies",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "Note: this guide requires langchain-core >= 0.2.13. We will also use OpenAI for embeddings, but any LangChain embeddings should suffice. We will use a simple LangGraph agent for demonstration purposes."
+            },
+            {
+              "type": "code",
+              "code": "%%capture --no-stderr%pip install -U langchain-core langchain-openai langgraph"
+            },
+            {
+              "type": "paragraph",
+              "text": "LangChain tools are interfaces that an agent, chain, or chat model can use to interact with the world. See here for how-to guides covering tool-calling, built-in tools, custom tools, and more information."
+            },
+            {
+              "type": "paragraph",
+              "text": "LangChain tools-- instances of BaseTool-- are Runnables with additional constraints that enable them to be invoked effectively by language models:"
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "Their inputs are constrained to be serializable, specifically strings and Python dict objects;",
+                "They contain names and descriptions indicating how and when they should be used;",
+                "They may contain a detailed args_schema for their arguments. That is, while a tool (as a Runnable) might accept a single dict input, the specific keys and type information needed to populate a dict should be specified in the args_schema."
+              ]
+            },
+            {
+              "type": "paragraph",
+              "text": "Runnables that accept string or dict input can be converted to tools using the as_tool method, which allows for the specification of names, descriptions, and additional schema information for arguments."
+            }
+          ],
+          "children": []
+        },
+        {
+          "level": 2,
+          "heading_text": "Basic usage​",
+          "anchor": "basic-usage",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "With typed dict input:"
+            },
+            {
+              "type": "code",
+              "code": "from typing import Listfrom langchain_core.runnables import RunnableLambdafrom typing_extensions import TypedDictclass Args(TypedDict):    a: int    b: List[int]def f(x: Args) -> str:    return str(x[\"a\"] * max(x[\"b\"]))runnable = RunnableLambda(f)as_tool = runnable.as_tool(    name=\"My tool\",    description=\"Explanation of when to use tool.\",)"
+            },
+            {
+              "type": "code",
+              "code": "print(as_tool.description)as_tool.args_schema.model_json_schema()"
+            },
+            {
+              "type": "code",
+              "code": "Explanation of when to use tool."
+            },
+            {
+              "type": "code",
+              "code": "{'properties': {'a': {'title': 'A', 'type': 'integer'},  'b': {'items': {'type': 'integer'}, 'title': 'B', 'type': 'array'}}, 'required': ['a', 'b'], 'title': 'My tool', 'type': 'object'}"
+            },
+            {
+              "type": "code",
+              "code": "as_tool.invoke({\"a\": 3, \"b\": [1, 2]})"
+            },
+            {
+              "type": "code",
+              "code": "'6'"
+            },
+            {
+              "type": "paragraph",
+              "text": "Without typing information, arg types can be specified via arg_types:"
+            },
+            {
+              "type": "code",
+              "code": "from typing import Any, Dictdef g(x: Dict[str, Any]) -> str:    return str(x[\"a\"] * max(x[\"b\"]))runnable = RunnableLambda(g)as_tool = runnable.as_tool(    name=\"My tool\",    description=\"Explanation of when to use tool.\",    arg_types={\"a\": int, \"b\": List[int]},)"
+            },
+            {
+              "type": "paragraph",
+              "text": "Alternatively, the schema can be fully specified by directly passing the desired args_schema for the tool:"
+            },
+            {
+              "type": "code",
+              "code": "from pydantic import BaseModel, Fieldclass GSchema(BaseModel):    \"\"\"Apply a function to an integer and list of integers.\"\"\"    a: int = Field(..., description=\"Integer\")    b: List[int] = Field(..., description=\"List of ints\")runnable = RunnableLambda(g)as_tool = runnable.as_tool(GSchema)"
+            },
+            {
+              "type": "paragraph",
+              "text": "String input is also supported:"
+            },
+            {
+              "type": "code",
+              "code": "def f(x: str) -> str:    return x + \"a\"def g(x: str) -> str:    return x + \"z\"runnable = RunnableLambda(f) | gas_tool = runnable.as_tool()"
+            },
+            {
+              "type": "code",
+              "code": "as_tool.invoke(\"b\")"
+            },
+            {
+              "type": "code",
+              "code": "'baz'"
+            }
+          ],
+          "children": []
+        },
+        {
+          "level": 2,
+          "heading_text": "In agents​",
+          "anchor": "in-agents",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "Below we will incorporate LangChain Runnables as tools in an agent application. We will demonstrate with:"
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "a document retriever;",
+                "a simple RAG chain, allowing an agent to delegate relevant queries to it."
+              ]
+            },
+            {
+              "type": "paragraph",
+              "text": "We first instantiate a chat model that supports tool calling:"
+            },
+            {
+              "type": "code",
+              "code": "pip install -qU \"langchain[google-genai]\""
+            },
+            {
+              "type": "code",
+              "code": "import getpassimport osif not os.environ.get(\"GOOGLE_API_KEY\"):  os.environ[\"GOOGLE_API_KEY\"] = getpass.getpass(\"Enter API key for Google Gemini: \")from langchain.chat_models import init_chat_modelllm = init_chat_model(\"gemini-2.5-flash\", model_provider=\"google_genai\")"
+            },
+            {
+              "type": "paragraph",
+              "text": "Following the RAG tutorial, let's first construct a retriever:"
+            },
+            {
+              "type": "code",
+              "code": "from langchain_core.documents import Documentfrom langchain_core.vectorstores import InMemoryVectorStorefrom langchain_openai import OpenAIEmbeddingsdocuments = [    Document(        page_content=\"Dogs are great companions, known for their loyalty and friendliness.\",    ),    Document(        page_content=\"Cats are independent pets that often enjoy their own space.\",    ),]vectorstore = InMemoryVectorStore.from_documents(    documents, embedding=OpenAIEmbeddings())retriever = vectorstore.as_retriever(    search_type=\"similarity\",    search_kwargs={\"k\": 1},)"
+            },
+            {
+              "type": "paragraph",
+              "text": "We next create use a simple pre-built LangGraph agent and provide it the tool:"
+            },
+            {
+              "type": "code",
+              "code": "from langgraph.prebuilt import create_react_agenttools = [    retriever.as_tool(        name=\"pet_info_retriever\",        description=\"Get information about pets.\",    )]agent = create_react_agent(llm, tools)"
+            },
+            {
+              "type": "code",
+              "code": "for chunk in agent.stream({\"messages\": [(\"human\", \"What are dogs known for?\")]}):    print(chunk)    print(\"----\")"
+            },
+            {
+              "type": "code",
+              "code": "{'agent': {'messages': [AIMessage(content='', additional_kwargs={'tool_calls': [{'id': 'call_W8cnfOjwqEn4cFcg19LN9mYD', 'function': {'arguments': '{\"__arg1\":\"dogs\"}', 'name': 'pet_info_retriever'}, 'type': 'function'}]}, response_metadata={'token_usage': {'completion_tokens': 19, 'prompt_tokens': 60, 'total_tokens': 79}, 'model_name': 'gpt-4o-mini', 'system_fingerprint': None, 'finish_reason': 'tool_calls', 'logprobs': None}, id='run-d7f81de9-1fb7-4caf-81ed-16dcdb0b2ab4-0', tool_calls=[{'name': 'pet_info_retriever', 'args': {'__arg1': 'dogs'}, 'id': 'call_W8cnfOjwqEn4cFcg19LN9mYD'}], usage_metadata={'input_tokens': 60, 'output_tokens': 19, 'total_tokens': 79})]}}----{'tools': {'messages': [ToolMessage(content=\"[Document(id='86f835fe-4bbe-4ec6-aeb4-489a8b541707', page_content='Dogs are great companions, known for their loyalty and friendliness.')]\", name='pet_info_retriever', tool_call_id='call_W8cnfOjwqEn4cFcg19LN9mYD')]}}----{'agent': {'messages': [AIMessage(content='Dogs are known for being great companions, known for their loyalty and friendliness.', response_metadata={'token_usage': {'completion_tokens': 18, 'prompt_tokens': 134, 'total_tokens': 152}, 'model_name': 'gpt-4o-mini', 'system_fingerprint': None, 'finish_reason': 'stop', 'logprobs': None}, id='run-9ca5847a-a5eb-44c0-a774-84cc2c5bbc5b-0', usage_metadata={'input_tokens': 134, 'output_tokens': 18, 'total_tokens': 152})]}}----"
+            },
+            {
+              "type": "paragraph",
+              "text": "See LangSmith trace for the above run."
+            },
+            {
+              "type": "paragraph",
+              "text": "Going further, we can create a simple RAG chain that takes an additional parameter-- here, the \"style\" of the answer."
+            },
+            {
+              "type": "code",
+              "code": "from operator import itemgetterfrom langchain_core.output_parsers import StrOutputParserfrom langchain_core.prompts import ChatPromptTemplatefrom langchain_core.runnables import RunnablePassthroughsystem_prompt = \"\"\"You are an assistant for question-answering tasks.Use the below context to answer the question. Ifyou don't know the answer, say you don't know.Use three sentences maximum and keep the answerconcise.Answer in the style of {answer_style}.Question: {question}Context: {context}\"\"\"prompt = ChatPromptTemplate.from_messages([(\"system\", system_prompt)])rag_chain = (    {        \"context\": itemgetter(\"question\") | retriever,        \"question\": itemgetter(\"question\"),        \"answer_style\": itemgetter(\"answer_style\"),    }    | prompt    | llm    | StrOutputParser())"
+            },
+            {
+              "type": "paragraph",
+              "text": "Note that the input schema for our chain contains the required arguments, so it converts to a tool without further specification:"
+            },
+            {
+              "type": "code",
+              "code": "rag_chain.input_schema.model_json_schema()"
+            },
+            {
+              "type": "code",
+              "code": "{'properties': {'question': {'title': 'Question'},  'answer_style': {'title': 'Answer Style'}}, 'required': ['question', 'answer_style'], 'title': 'RunnableParallel<context,question,answer_style>Input', 'type': 'object'}"
+            },
+            {
+              "type": "code",
+              "code": "rag_tool = rag_chain.as_tool(    name=\"pet_expert\",    description=\"Get information about pets.\",)"
+            },
+            {
+              "type": "paragraph",
+              "text": "Below we again invoke the agent. Note that the agent populates the required parameters in its tool_calls:"
+            },
+            {
+              "type": "code",
+              "code": "agent = create_react_agent(llm, [rag_tool])for chunk in agent.stream(    {\"messages\": [(\"human\", \"What would a pirate say dogs are known for?\")]}):    print(chunk)    print(\"----\")"
+            },
+            {
+              "type": "code",
+              "code": "{'agent': {'messages': [AIMessage(content='', additional_kwargs={'tool_calls': [{'id': 'call_17iLPWvOD23zqwd1QVQ00Y63', 'function': {'arguments': '{\"question\":\"What are dogs known for according to pirates?\",\"answer_style\":\"quote\"}', 'name': 'pet_expert'}, 'type': 'function'}]}, response_metadata={'token_usage': {'completion_tokens': 28, 'prompt_tokens': 59, 'total_tokens': 87}, 'model_name': 'gpt-4o-mini', 'system_fingerprint': None, 'finish_reason': 'tool_calls', 'logprobs': None}, id='run-7fef44f3-7bba-4e63-8c51-2ad9c5e65e2e-0', tool_calls=[{'name': 'pet_expert', 'args': {'question': 'What are dogs known for according to pirates?', 'answer_style': 'quote'}, 'id': 'call_17iLPWvOD23zqwd1QVQ00Y63'}], usage_metadata={'input_tokens': 59, 'output_tokens': 28, 'total_tokens': 87})]}}----{'tools': {'messages': [ToolMessage(content='\"Dogs are known for their loyalty and friendliness, making them great companions for pirates on long sea voyages.\"', name='pet_expert', tool_call_id='call_17iLPWvOD23zqwd1QVQ00Y63')]}}----{'agent': {'messages': [AIMessage(content='According to pirates, dogs are known for their loyalty and friendliness, making them great companions for pirates on long sea voyages.', response_metadata={'token_usage': {'completion_tokens': 27, 'prompt_tokens': 119, 'total_tokens': 146}, 'model_name': 'gpt-4o-mini', 'system_fingerprint': None, 'finish_reason': 'stop', 'logprobs': None}, id='run-5a30edc3-7be0-4743-b980-ca2f8cad9b8d-0', usage_metadata={'input_tokens': 119, 'output_tokens': 27, 'total_tokens': 146})]}}----"
+            },
+            {
+              "type": "paragraph",
+              "text": "See LangSmith trace for the above run."
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "Dependencies",
+                "Basic usage",
+                "In agents"
+              ]
+            }
+          ],
+          "children": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,137 @@
+{
+  "provenance": {
+    "url_final": "https://python.langchain.com/docs/how_to/custom_embeddings/",
+    "title": "Custom Embeddings | 🦜️🔗 LangChain",
+    "fetched_at": "2025-10-06T21:55:14.176550"
+  },
+  "sections": [
+    {
+      "level": 1,
+      "heading_text": "Custom Embeddings | 🦜️🔗 LangChain",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "LangChain is integrated with many 3rd party embedding models. In this guide we'll show you how to create a custom Embedding class, in case a built-in one does not already exist. Embeddings are critical in natural language processing applications as they convert text into a numerical form that algorithms can understand, thereby enabling a wide range of applications such as similarity search, text classification, and clustering."
+        },
+        {
+          "type": "paragraph",
+          "text": "Implementing embeddings using the standard Embeddings interface will allow your embeddings to be utilized in existing LangChain abstractions (e.g., as the embeddings powering a VectorStore or cached using CacheBackedEmbeddings)."
+        }
+      ],
+      "children": [
+        {
+          "level": 2,
+          "heading_text": "Interface​",
+          "anchor": "interface",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "The current Embeddings abstraction in LangChain is designed to operate on text data. In this implementation, the inputs are either single strings or lists of strings, and the outputs are lists of numerical arrays (vectors), where each vector represents an embedding of the input text into some n-dimensional space."
+            },
+            {
+              "type": "paragraph",
+              "text": "Your custom embedding must implement the following methods:"
+            },
+            {
+              "type": "paragraph",
+              "text": "These methods ensure that your embedding model can be integrated seamlessly into the LangChain framework, providing both synchronous and asynchronous capabilities for scalability and performance optimization."
+            },
+            {
+              "type": "paragraph",
+              "text": "Embeddings do not currently implement the Runnable interface and are also not instances of pydantic BaseModel."
+            }
+          ],
+          "children": [
+            {
+              "level": 3,
+              "heading_text": "Embedding queries vs documents​",
+              "anchor": "embedding-queries-vs-documents",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The embed_query and embed_documents methods are required. These methods both operate on string inputs. The accessing of Document.page_content attributes is handled by the vector store using the embedding model for legacy reasons."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "embed_query takes in a single string and returns a single embedding as a list of floats. If your model has different modes for embedding queries vs the underlying documents, you can implement this method to handle that."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "embed_documents takes in a list of strings and returns a list of embeddings as a list of lists of floats."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "embed_documents takes in a list of plain text, not a list of LangChain Document objects. The name of this method may change in future versions of LangChain."
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "level": 2,
+          "heading_text": "Implementation​",
+          "anchor": "implementation",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "As an example, we'll implement a simple embeddings model that returns a constant vector. This model is for illustrative purposes only."
+            },
+            {
+              "type": "code",
+              "code": "from typing import Listfrom langchain_core.embeddings import Embeddingsclass ParrotLinkEmbeddings(Embeddings):    \"\"\"ParrotLink embedding model integration.    # TODO: Populate with relevant params.    Key init args — completion params:        model: str            Name of ParrotLink model to use.    See full list of supported init args and their descriptions in the params section.    # TODO: Replace with relevant init params.    Instantiate:        .. code-block:: python            from langchain_parrot_link import ParrotLinkEmbeddings            embed = ParrotLinkEmbeddings(                model=\"...\",                # api_key=\"...\",                # other params...            )    Embed single text:        .. code-block:: python            input_text = \"The meaning of life is 42\"            embed.embed_query(input_text)        .. code-block:: python            # TODO: Example output.    # TODO: Delete if token-level streaming isn't supported.    Embed multiple text:        .. code-block:: python             input_texts = [\"Document 1...\", \"Document 2...\"]            embed.embed_documents(input_texts)        .. code-block:: python            # TODO: Example output.    # TODO: Delete if native async isn't supported.    Async:        .. code-block:: python            await embed.aembed_query(input_text)            # multiple:            # await embed.aembed_documents(input_texts)        .. code-block:: python            # TODO: Example output.    \"\"\"    def __init__(self, model: str):        self.model = model    def embed_documents(self, texts: List[str]) -> List[List[float]]:        \"\"\"Embed search docs.\"\"\"        return [[0.5, 0.6, 0.7] for _ in texts]    def embed_query(self, text: str) -> List[float]:        \"\"\"Embed query text.\"\"\"        return self.embed_documents([text])[0]    # optional: add custom async implementations here    # you can also delete these, and the base class will    # use the default implementation, which calls the sync    # version in an async executor:    # async def aembed_documents(self, texts: List[str]) -> List[List[float]]:    #     \"\"\"Asynchronous Embed search docs.\"\"\"    #     ...    # async def aembed_query(self, text: str) -> List[float]:    #     \"\"\"Asynchronous Embed query text.\"\"\"    #     ..."
+            }
+          ],
+          "children": [
+            {
+              "level": 3,
+              "heading_text": "Let's test it 🧪​",
+              "anchor": "lets-test-it-",
+              "blocks": [
+                {
+                  "type": "code",
+                  "code": "embeddings = ParrotLinkEmbeddings(\"test-model\")print(embeddings.embed_documents([\"Hello\", \"world\"]))print(embeddings.embed_query(\"Hello\"))"
+                },
+                {
+                  "type": "code",
+                  "code": "[[0.5, 0.6, 0.7], [0.5, 0.6, 0.7]][0.5, 0.6, 0.7]"
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "level": 2,
+          "heading_text": "Contributing​",
+          "anchor": "contributing",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "We welcome contributions of Embedding models to the LangChain code base."
+            },
+            {
+              "type": "paragraph",
+              "text": "If you aim to contribute an embedding model for a new provider (e.g., with a new set of dependencies or SDK), we encourage you to publish your implementation in a separate langchain-* integration package. This will enable you to appropriately manage dependencies and version your package. Please refer to our contributing guide for a walkthrough of this process."
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "Embedding queries vs documents"
+              ]
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "Let's test it 🧪"
+              ]
+            }
+          ],
+          "children": []
+        }
+      ]
+    }
+  ]
+}

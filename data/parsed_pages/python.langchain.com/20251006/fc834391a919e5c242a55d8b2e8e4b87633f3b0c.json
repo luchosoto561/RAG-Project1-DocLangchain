@@ -1,0 +1,104 @@
+{
+  "provenance": {
+    "url_final": "https://python.langchain.com/docs/how_to/output_parser_retry/",
+    "title": "How to retry when a parsing error occurs | 🦜️🔗 LangChain",
+    "fetched_at": "2025-10-06T21:56:02.391773"
+  },
+  "sections": [
+    {
+      "level": 1,
+      "heading_text": "How to retry when a parsing error occurs | 🦜️🔗 LangChain",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "While in some cases it is possible to fix any parsing mistakes by only looking at the output, in other cases it isn't. An example of this is when the output is not just in the incorrect format, but is partially complete. Consider the below example."
+        },
+        {
+          "type": "code",
+          "code": "from langchain.output_parsers import OutputFixingParserfrom langchain_core.exceptions import OutputParserExceptionfrom langchain_core.output_parsers import PydanticOutputParserfrom langchain_core.prompts import PromptTemplatefrom langchain_openai import ChatOpenAI, OpenAIfrom pydantic import BaseModel, Field"
+        },
+        {
+          "type": "code",
+          "code": "template = \"\"\"Based on the user question, provide an Action and Action Input for what step should be taken.{format_instructions}Question: {query}Response:\"\"\"class Action(BaseModel):    action: str = Field(description=\"action to take\")    action_input: str = Field(description=\"input to the action\")parser = PydanticOutputParser(pydantic_object=Action)"
+        },
+        {
+          "type": "code",
+          "code": "prompt = PromptTemplate(    template=\"Answer the user query.\\n{format_instructions}\\n{query}\\n\",    input_variables=[\"query\"],    partial_variables={\"format_instructions\": parser.get_format_instructions()},)"
+        },
+        {
+          "type": "code",
+          "code": "prompt_value = prompt.format_prompt(query=\"who is leo di caprios gf?\")"
+        },
+        {
+          "type": "code",
+          "code": "bad_response = '{\"action\": \"search\"}'"
+        },
+        {
+          "type": "paragraph",
+          "text": "If we try to parse this response as is, we will get an error:"
+        },
+        {
+          "type": "code",
+          "code": "try:    parser.parse(bad_response)except OutputParserException as e:    print(e)"
+        },
+        {
+          "type": "code",
+          "code": "Failed to parse Action from completion {\"action\": \"search\"}. Got: 1 validation error for Actionaction_input  Field required [type=missing, input_value={'action': 'search'}, input_type=dict]    For further information visit https://errors.pydantic.dev/2.9/v/missingFor troubleshooting, visit: https://python.langchain.com/docs/troubleshooting/errors/OUTPUT_PARSING_FAILURE"
+        },
+        {
+          "type": "paragraph",
+          "text": "If we try to use the OutputFixingParser to fix this error, it will be confused - namely, it doesn't know what to actually put for action input."
+        },
+        {
+          "type": "code",
+          "code": "fix_parser = OutputFixingParser.from_llm(parser=parser, llm=ChatOpenAI())"
+        },
+        {
+          "type": "code",
+          "code": "fix_parser.parse(bad_response)"
+        },
+        {
+          "type": "code",
+          "code": "Action(action='search', action_input='input')"
+        },
+        {
+          "type": "paragraph",
+          "text": "Instead, we can use the RetryOutputParser, which passes in the prompt (as well as the original output) to try again to get a better response."
+        },
+        {
+          "type": "code",
+          "code": "from langchain.output_parsers import RetryOutputParser"
+        },
+        {
+          "type": "code",
+          "code": "retry_parser = RetryOutputParser.from_llm(parser=parser, llm=OpenAI(temperature=0))"
+        },
+        {
+          "type": "code",
+          "code": "retry_parser.parse_with_prompt(bad_response, prompt_value)"
+        },
+        {
+          "type": "code",
+          "code": "Action(action='search', action_input='leo di caprio girlfriend')"
+        },
+        {
+          "type": "paragraph",
+          "text": "We can also add the RetryOutputParser easily with a custom chain which transform the raw LLM/ChatModel output into a more workable format."
+        },
+        {
+          "type": "code",
+          "code": "from langchain_core.runnables import RunnableLambda, RunnableParallelcompletion_chain = prompt | OpenAI(temperature=0)main_chain = RunnableParallel(    completion=completion_chain, prompt_value=prompt) | RunnableLambda(lambda x: retry_parser.parse_with_prompt(**x))main_chain.invoke({\"query\": \"who is leo di caprios gf?\"})"
+        },
+        {
+          "type": "code",
+          "code": "Action(action='search', action_input='leo di caprio girlfriend')"
+        },
+        {
+          "type": "paragraph",
+          "text": "Find out api documentation for RetryOutputParser."
+        }
+      ],
+      "children": []
+    }
+  ]
+}

@@ -1,0 +1,145 @@
+{
+  "provenance": {
+    "url_final": "https://python.langchain.com/docs/how_to/summarize_stuff/",
+    "title": "How to summarize text in a single LLM call | 🦜️🔗 LangChain",
+    "fetched_at": "2025-10-06T21:54:38.312792"
+  },
+  "sections": [
+    {
+      "level": 1,
+      "heading_text": "How to summarize text in a single LLM call | 🦜️🔗 LangChain",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "LLMs can summarize and otherwise distill desired information from text, including large volumes of text. In many cases, especially for models with larger context windows, this can be adequately achieved via a single LLM call."
+        },
+        {
+          "type": "paragraph",
+          "text": "LangChain implements a simple pre-built chain that \"stuffs\" a prompt with the desired context for summarization and other purposes. In this guide we demonstrate how to use the chain."
+        }
+      ],
+      "children": [
+        {
+          "level": 2,
+          "heading_text": "Load chat model​",
+          "anchor": "load-chat-model",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "Let's first load a chat model:"
+            },
+            {
+              "type": "code",
+              "code": "pip install -qU \"langchain[google-genai]\""
+            },
+            {
+              "type": "code",
+              "code": "import getpassimport osif not os.environ.get(\"GOOGLE_API_KEY\"):  os.environ[\"GOOGLE_API_KEY\"] = getpass.getpass(\"Enter API key for Google Gemini: \")from langchain.chat_models import init_chat_modelllm = init_chat_model(\"gemini-2.5-flash\", model_provider=\"google_genai\")"
+            },
+            {
+              "type": "paragraph",
+              "text": "See also: How to summarize through parallelization and How to summarize through iterative refinement."
+            }
+          ],
+          "children": []
+        },
+        {
+          "level": 2,
+          "heading_text": "Load documents​",
+          "anchor": "load-documents",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "Next, we need some documents to summarize. Below, we generate some toy documents for illustrative purposes. See the document loader how-to guides and integration pages for additional sources of data. The summarization tutorial also includes an example summarizing a blog post."
+            },
+            {
+              "type": "code",
+              "code": "from langchain_core.documents import Documentdocuments = [    Document(page_content=\"Apples are red\", metadata={\"title\": \"apple_book\"}),    Document(page_content=\"Blueberries are blue\", metadata={\"title\": \"blueberry_book\"}),    Document(page_content=\"Bananas are yelow\", metadata={\"title\": \"banana_book\"}),]"
+            }
+          ],
+          "children": []
+        },
+        {
+          "level": 2,
+          "heading_text": "Load chain​",
+          "anchor": "load-chain",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "Below, we define a simple prompt and instantiate the chain with our chat model and documents:"
+            },
+            {
+              "type": "code",
+              "code": "from langchain.chains.combine_documents import create_stuff_documents_chainfrom langchain_core.prompts import ChatPromptTemplateprompt = ChatPromptTemplate.from_template(\"Summarize this content: {context}\")chain = create_stuff_documents_chain(llm, prompt)"
+            }
+          ],
+          "children": []
+        },
+        {
+          "level": 2,
+          "heading_text": "Invoke chain​",
+          "anchor": "invoke-chain",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "Because the chain is a Runnable, it implements the usual methods for invocation:"
+            },
+            {
+              "type": "code",
+              "code": "result = chain.invoke({\"context\": documents})result"
+            },
+            {
+              "type": "code",
+              "code": "'The content describes the colors of three fruits: apples are red, blueberries are blue, and bananas are yellow.'"
+            }
+          ],
+          "children": [
+            {
+              "level": 3,
+              "heading_text": "Streaming​",
+              "anchor": "streaming",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Note that the chain also supports streaming of individual output tokens:"
+                },
+                {
+                  "type": "code",
+                  "code": "for chunk in chain.stream({\"context\": documents}):    print(chunk, end=\"|\")"
+                },
+                {
+                  "type": "code",
+                  "code": "|The| content| describes| the| colors| of| three| fruits|:| apples| are| red|,| blueberries| are| blue|,| and| bananas| are| yellow|.||"
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "level": 2,
+          "heading_text": "Next steps​",
+          "anchor": "next-steps",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "See the summarization how-to guides for additional summarization strategies, including those designed for larger volumes of text."
+            },
+            {
+              "type": "paragraph",
+              "text": "See also this tutorial for more detail on summarization."
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "Streaming"
+              ]
+            }
+          ],
+          "children": []
+        }
+      ]
+    }
+  ]
+}

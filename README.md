@@ -14,6 +14,6 @@ Arbol de diseno:
 - crawler -> descarga los html de la documentacion oficial
 - parser -> convierte cada HTML crudo en una representacion estructurada y limpia del contenido (json estructurado con jerarquia H1/H2/H3, bloques basicos y
   url_final para poder chunkear y citar despues). Es la base sobre la que luego podremos chunkear. Conserva jerarquia, anchors y bloques tecnicos.
-- chunker ->
+- chunker -> chunkea todos los .json que se encuentran en data/parsed_pages, respetando un limite de "tokens" (consideramos que un token tiene 4 palabras)
 
 README.md

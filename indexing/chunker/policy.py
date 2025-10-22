@@ -1,4 +1,3 @@
-# chunker/policy.py
 """
 Reglas mínimas del chunker v1
 Este módulo NO transforma contenido ni conoce la estructura del documento.
@@ -59,7 +58,6 @@ def estimate_tokens(text: str) -> int:
     return ceil(len(text) / 4)
 
 
-# Exportaciones explícitas (opcional, deja claro el contrato público del módulo)
 __all__ = [
     "SOFT_TOKENS",
     "HARD_TOKENS",

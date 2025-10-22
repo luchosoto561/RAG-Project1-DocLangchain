@@ -8,8 +8,6 @@ from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit, urljoin, quote, unquote
 import json
 import datetime as dt
-from typing import Dict, List
-
 
 SEEDS_DIR = Path("indexing/crawler")  
 
@@ -23,8 +21,9 @@ ALLOWED_HOSTS = {
 TRACKING_PARAMS = {"utm_source","utm_medium","utm_campaign","utm_term","utm_content","fbclid","gclid","ref"}
 
 
-#limpia la query de la url quitando parametros de tracking que no cambian el contenido
+
 def strip_tracking(url: str) -> str:
+    """limpia la query de la url quitando parametros de tracking que no cambian el contenido"""
     parts = list(urlsplit(url))
     if parts[3]:  # query
         kept = []
@@ -39,9 +38,9 @@ def strip_tracking(url: str) -> str:
         parts[3] = "&".join(kept)
     return urlunsplit(tuple(parts))
 
-# deja a la url en una forma unica para descargar
+
 def normalize_url(raw: str, base: str | None = None) -> str:
-    """https, host minúsculas, sin fragmento, sin tracking, trailing slash para paths de carpeta."""
+    """deja a la url en una forma unica para descargar ->https, host minúsculas, sin fragmento, sin tracking, trailing slash para paths de carpeta."""
     if base:
         # si raw es una url absoluta te devuelve raw, si empieza con / reeplaza el path de base por raw y te devuelve la url absoluta, si raw empieza sin /, te agrega al directorio donde apunta la url a raw. Basicamente vas a tener una url absoluta
         raw = urljoin(base, raw)
@@ -57,8 +56,11 @@ def normalize_url(raw: str, base: str | None = None) -> str:
     url = urlunsplit((scheme, netloc, path, query, fragment))
     return strip_tracking(url)
 
-# lee un archivo .txt de indexing/crawler, ignora lineas vacias o que empiezan con # y normaliza cada url con normalize_url
+
 def load_seed_file(path: Path) -> list[str]:
+    """
+    lee un archivo .txt de indexing/crawler, ignora lineas vacias o que empiezan con # y normaliza cada url con normalize_url
+    """
     if not path.exists():
         return []
     urls = []
@@ -70,8 +72,8 @@ def load_seed_file(path: Path) -> list[str]:
         urls.append(normalize_url(line))
     return urls
 
-# separa las url en validas e invalidas segun el dominio. Compara el host de cada url con el set ALLOWED_HOSTS 
 def validate_hosts(urls: list[str]) -> tuple[list[str], list[str]]:
+    """separa las url en validas e invalidas segun el dominio. Compara el host de cada url con el set ALLOWED_HOSTS """
     ok, bad = [], []
     for u in urls:
         host = urlsplit(u).netloc
@@ -79,8 +81,8 @@ def validate_hosts(urls: list[str]) -> tuple[list[str], list[str]]:
     return ok, bad
 
 
-# recibe el dict que se le pasa en la funcion principal (la de abajo de todo), y para cada grupo valida hosts con validate_hosts, etc. Escribe un json con esa info de cada url y metadatos
 def write_manifest(seeds: dict[str, list[str]], out_path: Path = Path("indexing/crawler/seeds_manifest.json")) -> None:
+    """recibe el dict que se le pasa en la funcion principal (la de abajo de todo), y para cada grupo valida hosts con validate_hosts, etc. Escribe un json con esa info de cada url y metadatos"""
     out_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "generated_at": dt.datetime.now().isoformat(),
@@ -101,7 +103,7 @@ def write_manifest(seeds: dict[str, list[str]], out_path: Path = Path("indexing/
 
 
 def seeds_loader():
-    
+    """crea el seeds_manifest.json con las urls limpias e info de las mismas"""
     diccionario_group_urls: dict[str, list[str]] = {}
     
     # quedan las urls de cada txt en forma lista normalizadas

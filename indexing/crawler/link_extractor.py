@@ -1,25 +1,24 @@
 """
 saca del interior de los html los links y los devuelve en una lista, se aplican un par de filtros obvios. 
+Reglas claras y simples:
+1. extraer todos los <a href="...">
+2. descartar href vacios o solo "#"/ "?..." sin path util, esquemas no web, enlaces externos.
+3. resolver relativos con base_url
+4. normalizar cada url con nuestro normalize_url
+5. unificar/ filtrar duplicados triviales
+6. No descarga nada, solo lee el archivo y procesa el HTML
 """
 
-# indexing/crawler/link_extractor.py
 from __future__ import annotations
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import List, Set
 from urllib.parse import urlsplit, urljoin
-
 import json
 
-# Usamos TU normalizador para que todas las URLs queden con la misma “forma”
-# (https, host minúscula, sin #fragment, sin utm_*, con slash final si es carpeta, etc.)
-# Si más adelante lo movés a utils/, solo cambiás este import.
 from seeds_loader import normalize_url
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Coleccionista simple de <a href="..."> usando la librería estándar
-# ──────────────────────────────────────────────────────────────────────────────
 class _HrefCollector(HTMLParser):
     """
     recorre el HTML y se guarda TODOS los valores de href que
@@ -31,9 +30,12 @@ class _HrefCollector(HTMLParser):
         super().__init__(convert_charrefs=True)
         # lista donde vamos a almacenar las url
         self.hrefs: List[str] = []
-
-    # funcion que llama el parser cada vez que se encuentra una etiquete de apertura en el html, por ej <a...>, <div...>, etc. tag es el nombre de la etiqueta que acaba de abrir, attrs es una lista de pares (clave, valor) con todos los atributos que venian dentro de esa etiqueta. 
+ 
     def handle_starttag(self, tag: str, attrs) -> None:
+        """
+        llama el parser cada vez que se encuentra una etiquete de apertura en el html, por ej <a...>, <div...>, etc. 
+        tag es el nombre de la etiqueta que acaba de abrir, attrs es una lista de pares (clave, valor) con todos los atributos que venian dentro de esa etiqueta.
+        """
         if tag.lower() != "a":
             return
         for (k, v) in attrs:

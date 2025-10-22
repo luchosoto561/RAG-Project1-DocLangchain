@@ -1,9 +1,10 @@
-# chunker/chunker.py
-# Recorre todos los .json parseados bajo:
-#   data/parsed_pages/langchain-ai.github.io/**/*.json
-#   data/parsed_pages/python.langchain.com/**/*.json
-# Para cada archivo: carga, hace make_chunks y emite JSONL por stdout.
+"""
+Recorre todos los .json parseados bajo:
+  data/parsed_pages/langchain-ai.github.io/**/*.json
+  data/parsed_pages/python.langchain.com/**/*.json
+Para cada archivo: carga, hace make_chunks y emite JSONL por stdout.
 
+"""
 from pathlib import Path
 import sys, json
 from core import make_chunks

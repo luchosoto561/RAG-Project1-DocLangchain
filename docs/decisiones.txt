@@ -1,0 +1,3 @@
+21/10 -> en el parser entiendo que es donde extraigo el anchor de los html me dice el chat que tengo que normalizar anchors para no repetir el mismo chunk dos veces porque el anchor difiere en un caracter.
+Yo pienso que eso seria solucionar un problema de la persona que esta creando la doc oficial, pero dice el chat que puede ser que yo malforme el anchor (para mi esta flashando). El tema es que no corregi
+nada de eso, porque quiero ver si me conviene, para mi el anchor que extraigo de un html no lo tengo que tocar, pero nose.  

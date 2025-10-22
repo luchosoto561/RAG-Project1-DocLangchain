@@ -3,8 +3,6 @@ Objetivo del archivo ->
 - marcar el ritmo por host (rate - limit). Ej: como maximo una request por segundo a python.langchain.com
 para no recibir 429.
 - Reintentar con PAUSAS CRECIENTES (backoff) cuando hay 429/5xx/errores de red.
-
-
 """
 from __future__ import annotations
 import time 

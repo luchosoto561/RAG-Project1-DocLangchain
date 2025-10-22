@@ -5,12 +5,6 @@ from __future__ import annotations
 from typing import Tuple, List, Dict
 from urllib.parse import urlsplit
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Configuración de “portería”
-# Pensalo simple: primero sacamos lo que seguro NO queremos (assets/ruido),
-# después dejamos pasar SOLO las secciones que SÍ queremos por host.
-# ──────────────────────────────────────────────────────────────────────────────
-
 ALLOWED_HOSTS = {
     "python.langchain.com",
     "docs.langchain.com",

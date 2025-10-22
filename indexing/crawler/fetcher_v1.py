@@ -2,19 +2,18 @@
     baja las urls validas del seeds_manifest.json (semillas), guarda el html crudo y deja un registro de cada descarga. No sigue enlaces (profundidad cero)
 
 """
+# estandar
 from __future__ import annotations
 from pathlib import Path
-# haslib es un modulo estandar de python que implementa funciones hash como sha1, tiene como entrada bytes y como salida puede tener digest() -> bytes o hexdigest() -> string hex (dos caracteres por byte)
+# hashlib: funciones hash (entrada: bytes; salida: digest()->bytes, hexdigest()->str hex)
 import json, hashlib, datetime as dt
+from typing import TypedDict, Optional
+import re
 from urllib.parse import urlsplit, urlunsplit, urlparse, urljoin
 import urllib.robotparser as robotparser
 
-from typing import TypedDict, Optional
-
+# terceros
 import httpx  
-import re
-
-
 
 class Dict_por_url(TypedDict):
         url: str
@@ -38,22 +37,24 @@ MANIFEST_PATH = Path("indexing/crawler/seeds_manifest.json")
 RAW_DIR = Path("data/raw_pages")
 INDEX_PATH = Path("data/raw_pages/index.json")
 
-"""
-hashlib.sha1(bytes) crea un objeto hash SHA-1 inicializado con esos bytes y .hexdigest() finaliza el computo y devuelve el resumen en hexadecimal 
-RESULTADO : La funcion devuelve el SHA-1 en hex de la cadena s (codificada en UTF-8), es determinista, es decir, misma s, mismo resultado, asi es como se 
-convierte cualquier string en una huella unica de tamano fijo
-
-"""
 def sha1(s: str) -> str:
+    """
+    crea un objeto hash SHA-1 inicializado con esos bytes y .hexdigest() finaliza el computo y devuelve el resumen en hexadecimal 
+    RESULTADO : La funcion devuelve el SHA-1 en hex de la cadena s (codificada en UTF-8), es determinista, es decir, misma s, mismo resultado, asi es como se 
+    convierte cualquier string en una huella unica de tamano fijo
+    """
     return hashlib.sha1(s.encode("utf-8")).hexdigest()
 
-# devuelve la fecha de hoy en formato YYYYMMDD para armar carpetas por dia
 def today_stamp() -> str:
+    """
+    devuelve la fecha de hoy en formato YYYYMMDD para armar carpetas por dia
+    """
     return dt.datetime.now().strftime("%Y%m%d")
 
-# lee el manifest y devuelve la lista de URLS validas, sin repetidas
 def load_valid_seed_urls(manifest_path: Path) -> list[str]:
-    
+    """
+    lee el manifest y devuelve la lista de URLS validas, sin repetidas
+    """
     data = json.loads(manifest_path.read_text(encoding="utf-8"))
     urls: list[str] = []
     # agrega las url validas en urls
@@ -69,14 +70,12 @@ def load_valid_seed_urls(manifest_path: Path) -> list[str]:
             out.append(u)
     return out
 
-"""
-consulta el robots.txt del sitio y dice si tenemos permisos para acceder a la url pasada como parametro
-
-rp.parse(lineas de texto del bot.txt) -> limpia las lineas quitando espacios, etc, agrupa por user-agent las
-reglas  
-"""
 def robots_allows(url: str) -> bool:
-    
+    """
+    consulta el robots.txt del sitio y dice si tenemos permisos para acceder a la url pasada como parametro
+    rp.parse(lineas de texto del bot.txt) -> limpia las lineas quitando espacios, etc, agrupa por user-agent las
+    reglas
+    """
     parts = urlsplit(url)
     robots_url = urlunsplit((parts.scheme, parts.netloc, "/robots.txt", "", ""))
     
@@ -176,25 +175,24 @@ def fetch_and_save(url: str) -> dict:
         rec.setdefault("url_final", url)
         return rec
 
-# agrega ese registro como una linea en data/raws_pages/index.json1
 def append_index(recs: list[Dict_por_url]) -> None:
+    """agrega ese registro como una linea en data/raws_pages/index.json1"""
     INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
     INDEX_PATH.write_text(json.dumps(recs, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def fetcher_v1() -> None:
-    
-    # devuelve una lista de las url que se encuentran en ese json sin repetidas (es decir las que tenemos que descargar)
+    """ejecuta todo el fetcher -> descarga las urls sin repetidas y crea json con info de las descargasindex.jsonl
+    """
     urls_a_descargar = load_valid_seed_urls(Path("indexing/crawler/seeds_manifest.json"))
 
-    # La “lista grande” de registros:
+    # La “lista grande” de registros
     lista_diccionarios_por_url: list[Dict_por_url] = []
     
     for url in urls_a_descargar:
         # se descarga la url y se crea descripcion de la url
         lista_diccionarios_por_url.append(fetch_and_save(url))
         
-    # se transforma el diccionario a json
     append_index(lista_diccionarios_por_url)
 
 

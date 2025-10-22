@@ -2,18 +2,15 @@
 convierte un html en un documento estructurado (dict/JSON) con provenence {url_final, title, fetched_at} y sections (arbol H1/H2/H3, y dentro de cada 
 seccion bloques basicos (paragraph, code, list))
 
+- Recibe HTML crudo (string), url_final y fetched_at.
+- Elimina ruido obvio (scripts/estilos/zonas de navegación).
+- Construye jerarquía H1→H2→H3.
+- Extrae bloques básicos: paragraph, code, list.
+- Captura anchor (id) SOLO en headings.
+- Devuelve un dict listo para serializar a JSON.
 """
-# parser/core.py
-# v1 — Lógica pura del parser:
-# - Recibe HTML crudo (string), url_final y fetched_at.
-# - Elimina ruido obvio (scripts/estilos/zonas de navegación).
-# - Construye jerarquía H1→H2→H3.
-# - Extrae bloques básicos: paragraph, code, list.
-# - Captura anchor (id) SOLO en headings.
-# - Devuelve un dict listo para serializar a JSON.
 
 from __future__ import annotations
-
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from typing import Dict, List, Optional
@@ -23,14 +20,12 @@ from typing import Dict, List, Optional
 # Utilidades de normalización
 # ----------------------------
 
-"""
-en el texto dentro de un html (parrafos, items de listas) suelen venir espacios no separables (&nbsp; ), multiples espacios seguidos, tabs y saltos de linea
-mezclados, eso empeora la legibilidad y complica el retrieval. Esta funcion normaliza eso para dejarlo prolijo
-"""
 def _normalize_ws(text: str) -> str:
-    """Colapsa espacios/saltos redundantes en texto normal (no código)."""
-    # Nota: HTMLParser ya decodifica entidades (&nbsp; viene como \xa0).
-    # Reemplazamos no-break-space por espacio normal y colapsamos.
+    """
+    Colapsa espacios/saltos redundantes en texto normal (no código) -> en el texto dentro de un html (parrafos, items de listas) suelen venir espacios no separables (&nbsp; ),
+    multiples espacios seguidos, tabs y saltos de linea mezclados, eso empeora la legibilidad y complica el retrieval. Esta funcion normaliza eso para dejarlo prolijo
+    """
+
     if not text:
         return ""
     text = text.replace("\xa0", " ")
@@ -42,10 +37,7 @@ def _normalize_ws(text: str) -> str:
 # Estructuras en memoria
 # ----------------------------
 
-"""
-este decorador de clase, simplifica la creacion de clases que se utilizan principalmente para almacenar datos. Este decorador genera automaticamente metodos
-utiles como __init__, __repr__, __eq__, y otros, basandose en los atributos definidos en la clase. Esto reduce el codigo repetitivo y mejora la legibilidad
-"""
+
 @dataclass
 class Block:
     type: str  # "paragraph" | "code" | "list"
@@ -96,11 +88,10 @@ class _DocHTMLParser(HTMLParser):
         # Título del documento (<title>)
         self.page_title: str = ""
         
-        """
-        section_stack es el estado de trabajo, representa el camino abierto en jerarquia en este instante (del H1 actual hacia abajo). Sirve para saber quien es el padre
-        de la prox seccion. Pero sections es la salida final en forma de arbol, aqui se guardan solo las secciones de nivel superior (los H1 y si no hubiera H1, lo que haga de
-        raiz). Cada uno tendra sus children anidados. Es lo que se serializa a JSON. 
-        """
+        # section_stack es el estado de trabajo, representa el camino abierto en jerarquia en este instante (del H1 actual hacia abajo). Sirve para saber quien es el padre
+        # de la proxima seccion. Pero sections es la salida final en forma de arbol, aqui se guardan solo las secciones de nivel superior (los H1 y si no hubiera H1, lo que haga de
+        # raiz). Cada uno tendra sus children anidados. Es lo que se serializa a JSON. 
+        
         # Pila de secciones abiertas (para anidar h1→h2→h3)
         self.section_stack: List[Section] = []
 
@@ -144,13 +135,15 @@ class _DocHTMLParser(HTMLParser):
     # Helpers
     # ------------
 
-    # devuelve la seccion actual
+    
     def _current_section(self) -> Optional[Section]:
+        """devuelve la seccion actual"""
         return self.section_stack[-1] if self.section_stack else None
 
-    # 
+    
     def _append_block(self, block: Block) -> None:
-        # Si no hay sección abierta aún, creamos una ficticia de nivel 1 (se define texto más tarde).
+        """ si seccion_stack esta vacia, crea una seccion ficticia (en section y en section_stack), luego agrega el bloque que recibe como parametro a la seccion de section_stack"""
+        
         if not self.section_stack:
             # si no tenemos seccion mas importante aun como un H1, la metemos en la pila de secciones y en la lista de secciones (esta es el arbol que se serializa a json para devolver)
             self.section_stack.append(Section(level=1, heading_text=""))
@@ -459,8 +452,8 @@ def parse_document(*, html_text: str, url_final: str, fetched_at: str) -> Dict:
     if root0.level == 1 and not root0.heading_text and title:
         root0.heading_text = title
 
-    # Serializar dataclasses a estructuras dict/list nativas
     def section_to_dict(s: Section) -> Dict:
+        """Serializar dataclasses a estructuras dict/list nativas"""
         return {
             "level": s.level,
             "heading_text": s.heading_text,

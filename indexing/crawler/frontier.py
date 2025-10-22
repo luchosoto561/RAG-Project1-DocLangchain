@@ -5,4 +5,10 @@ Basicamente este modulo lo que hace es llevar la agenda del crawler:
 - cual ya vimos/visitamos (historico)
 - de donde salio cada url (relacion padre -> hijo)
 - en que produndidad esta cada uno (0 ,1 ,2 , ...)
+
+piezas:
+- cola de pendientes
+- conjunto de vistas
+- relaciones padre e hijo
+- profundidad
 """

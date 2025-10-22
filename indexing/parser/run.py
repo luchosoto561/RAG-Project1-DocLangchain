@@ -1,26 +1,23 @@
-# parser/run.py
-# v1 — Orquestador mínimo del parser:
-# - Lee index.json
-# - Filtra registros válidos (status_code == 200 y archivo HTML existente).
-# - Carga el HTML crudo, llama a core.parse_document(...)
-# - Persiste el JSON resultante en data/parsed_pages/<host>/<YYYYMMDD>/<sha1(url_final)>.json
+"""
+- Lee index.json
+- Filtra registros válidos (status_code == 200 y archivo HTML existente).
+- Carga el HTML crudo, llama a core.parse_document(...)
+- Persiste el JSON resultante en data/parsed_pages/<host>/<YYYYMMDD>/<sha1(url_final)>.json
+"""
 
 from __future__ import annotations
 
-import argparse
 import hashlib
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Iterable, Iterator, List, Union
+from typing import Dict, Iterator, Union
 
-# Importa SOLO lo necesario del core del parser (lógica pura, sin I/O).
-# La implementaremos luego en parser/core.py con la firma indicada.
-from core import parse_document  # type: ignore
+from core import parse_document 
 
-# recibe en nuestro caso la url_final
+
 def _sha1(text: str) -> str:
-    """Hash SHA1 hex de un string (para nombres de archivo deterministas)."""
+    """Hash SHA1 hex de un string (para nombres de archivo deterministas) -> en nuestro caso recibe la url_final"""
     return hashlib.sha1(text.encode("utf-8")).hexdigest()
 
 
@@ -36,13 +33,15 @@ def _date_stamp_iso(date_str: str) -> str:
         return "unknown"
     return dt.strftime("%Y%m%d")
 
-# recorre el index.json y va devolviendo un dict en cada iteracion de la funcion, esto lo entiendo porque la funcion no usa return sino que usa yield, entonces se crea un generador que se escribe como Iterator[Dict] en este caso de Dict
+
 def _load_index(path: Union[str, Path]) -> Iterator[Dict]:
     """
     Carga un índice que puede estar en:
-    - JSON (array grande con registros)
-    - JSONL (una línea por registro)
+    - JSON 
+    - JSONL 
     Devuelve un iterador de dicts (registros).
+    Recorre el index.json y va devolviendo un dict en cada iteracion de la funcion, esto lo entiendo porque la funcion no usa return sino que usa yield, 
+    entonces se crea un generador que se escribe como Iterator[Dict] en este caso de Dict
     """
     p = Path(path)
     if not p.exists():
@@ -55,7 +54,6 @@ def _load_index(path: Union[str, Path]) -> Iterator[Dict]:
                 line = line.strip()
                 if not line:
                     continue
-                # recorda que el yield hace que cuando se llame a la funcion en un for te retorne y se pause la funcion, para que luego en el prox llamado se sigua de la linea siguiente con las variables locales y el estado intactos
                 yield json.loads(line)
         return
 
@@ -74,13 +72,13 @@ def _load_index(path: Union[str, Path]) -> Iterator[Dict]:
                     continue
                 yield json.loads(line)
 
- # devuelve igual que la anterior un generador
 def _iter_valid_records(index_path: Union[str, Path]) -> Iterator[Dict]:
     """
     Filtra registros válidos para parsear:
     - status_code == 200
     - html_crudo_path existente
     - url_final presente (requisito para citas)
+    devuelve un generador (yield en vez de return)
     """
     for rec in _load_index(index_path):
         if rec.get("status_code") != 200:
@@ -128,7 +126,7 @@ def run_parser(
     limit: int | None = None, # tope de cuantos documentos procesar en esta corrida
 ) -> Dict[str, int]:
     """
-    Orquesta el parseo de múltiples HTML según el índice.
+    Orquesta el parseo de múltiples HTML según el índice -> te crea un json por html en /data/parsed_pages
     Devuelve contadores simples.
     """
     # carpeta base donde van todos los json parseados

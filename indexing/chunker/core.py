@@ -1,4 +1,3 @@
-# chunker/core.py
 """
 Chunker v1: toma una página parseada y devuelve una lista de chunks listos
 para indexar. Respeta:
@@ -44,7 +43,7 @@ Salida (cada chunk es un dict JSON-serializable):
 """
 
 from __future__ import annotations
-from typing import Dict, Any, Iterable, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple
 import hashlib
 
 from policy import SOFT_TOKENS, HARD_TOKENS, INCLUDE_HEADING, estimate_tokens
@@ -99,7 +98,7 @@ def _render_block(block: Dict[str, Any]) -> Tuple[str, bool]:
         return ("\n".join(f"- {str(it)}" for it in items), False)
     if btype == "code":
         lang = block.get("language") or ""
-        code = block.get("content", "")
+        code = block.get("code", "")
         fence = f"```{lang}\n{code}\n```" if lang else f"```\n{code}\n```"
         return (fence, True)
     # Desconocido: lo ignoramos de forma segura.
@@ -156,7 +155,7 @@ def _ascend_anchor(node: Dict[str, Any], parent_chain: List[Dict[str, Any]]) -> 
 
 
 # ---------------------------- ids y deduplicación ------------------------------
-# para deduplicar, es el id que se va a devolver por chunk, el seq es lo que hace que sea uno por chunk
+
 def _chunk_id(url_final: str, anchor: Optional[str], seq: int) -> str:
     """es el DNI del chunk (único por página+anchor+posición). Lo usás para guardar/actualizar en el store:
     si la sección cambia de contenido mañana, mantiene el mismo ID y el upsert reemplaza la versión vieja 

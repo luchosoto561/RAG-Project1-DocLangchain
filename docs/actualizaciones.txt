@@ -5,3 +5,5 @@ El tema es que tienen profundidad cero, es decir, no podes acceder a links dentr
 tener como el camino que se sigue, no puse la profundidad, no puse un hash del html que sirve creo que si cambia el contenido te das cuenta y entonces no tenes que leer todo para saber si cambio o no. Vi teoricamente 
 lo que va a hacer el parser. LUEGO NO MIRE MUCHO LO DE URL SOLICITADA VS EFECTIVA, PERO DEJE EL CODIGO EN fetcher_v1 PARA OBTENER A PARTIR DE LA SOLICITADA, LA EFECTIVA. 
 22/10 -> termine el chunker y devuelve los chunks en una lista de dicts en chunker.py, ademas ordene todo el codigo manteniendo bien documentado el mismo. 
+23/10 -> termine supuestamente el indexing, ya tengo toda la logica para cargar en la base de datos vectorial todos los chunks. Tengo que ver el pinecone_client.py porque tengo que tener un indice creado en pinecone, ademas 
+tengo que ver cuantos tokens me va a gastar hacer todos los embeddings, etc porque es bastante. Luego de eso ejecutar el indexer y ver como funciona. Todo esto lo hago el 25. ENTENER TODO LO QUE TENGO QUE HACER CON PINECONE AL TACO. 

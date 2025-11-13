@@ -1,3 +1,6 @@
 21/10 -> en el parser entiendo que es donde extraigo el anchor de los html me dice el chat que tengo que normalizar anchors para no repetir el mismo chunk dos veces porque el anchor difiere en un caracter.
 Yo pienso que eso seria solucionar un problema de la persona que esta creando la doc oficial, pero dice el chat que puede ser que yo malforme el anchor (para mi esta flashando). El tema es que no corregi
 nada de eso, porque quiero ver si me conviene, para mi el anchor que extraigo de un html no lo tengo que tocar, pero nose.  
+10/11 -> corri el indexer y me di cuenta que habia un error porque el limite de tokens que pueden ir en un vector son alrededor de 8k y habia un item que tenia como 11k, entonces agarre y borre el chunk que generaba
+ese item, entiendo que no es lo profesional y tendria que hacer que se calculen en el chunker los chunks de forma exacta con tiktoken, teniendo en cuenta el modelo de embedding que se usa, etc. No lo hice porque quiero
+abanzar. 

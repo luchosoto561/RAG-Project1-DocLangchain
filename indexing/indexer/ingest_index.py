@@ -104,7 +104,7 @@ def batch_iter(it: Iterable[Any], batch_size: int) -> Generator[List[Any], None,
     buf: List[Any] = []
     for x in it:
         buf.append(x)
-        if len(buf) >= batch_size:
+        if len(buf) > batch_size:
             yield buf
             buf = []
     if buf:
@@ -156,11 +156,40 @@ def prepare_upsert_payload(
         items.append(
             {
                 "id": str(cid),
-                "vector": vec,
+                "values": vec,
                 "metadata": to_metadata(ch),
             }
         )
     return items
+
+# -----------------------------------------------------------------------------#
+# helper porque a pinecone en items no le pueden llevar null
+# -----------------------------------------------------------------------------#
+def helper_no_null(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    cleaned = []
+    for it in items:
+        new_it = dict(it)  # copia superficial (id, values, metadata)
+        md = dict(new_it.get("metadata") or {})
+
+        for k, v in list(md.items()):
+            if v is None:
+                md[k] = ""  # Pinecone acepta string vacío
+            elif isinstance(v, list):
+                # Pinecone solo permite List[str]; convertimos y reemplazamos None por ""
+                md[k] = [("" if x is None else str(x)) for x in v]
+            elif isinstance(v, (dict, set, tuple)):
+                # Estructuras anidadas NO están permitidas; serializamos a string
+                # (alternativa: eliminar la clave si no querés inflar metadata)
+                md[k] = json.dumps(v, ensure_ascii=False)
+            elif isinstance(v, (str, int, float, bool)):
+                pass  # permitido
+            else:
+                # Cualquier otro tipo raro -> string
+                md[k] = str(v)
+
+        new_it["metadata"] = md
+        cleaned.append(new_it)
+    return cleaned
 
 
 # -----------------------------------------------------------------------------#
@@ -172,7 +201,6 @@ def ingest_file(
     *,
     batch_size: int,
     namespace: str,
-    dry_run: bool = False,
 ) -> Tuple[int, int]:
     """
     Esta funcion se encarga de tomar un archivo .jsonl de chunks y meterlos en la base de datos vectorial en tandas. 
@@ -180,20 +208,22 @@ def ingest_file(
     Parametros:
     - path: Path -> ruta al archivo jsonl que generlo el chunker
     - batch_size: int -> cuantos chunks procesa por tandas
-    - namespace: str -> "carpeta" logica dentro del indice de Pinecone donde vas a guardar estos vectores (te permite separar, por ej, langchain docs, otra fuente, etc sin mezclar resultados)
-    - dry_run: bool -> si esta en True hace todo menos el upsert, util para probar el pipeline. 
+    - namespace: str -> "carpeta" logica dentro del indice de Pinecone donde vas a guardar estos vectores (te permite separar, por ej, langchain docs, otra fuente, etc sin mezclar resultados) 
     
     Devuelve:
     - (ingresados, fallidos)
     """
 
-    n_chunks = 0
-    n_batches = 0
+    ok = 0
+    total_vectores_a_enviar = 0
 
     LOG.info("Procesando: %s", path.name)
 
     # Stream de chunks del archivo
     for batch_chunks in batch_iter(read_jsonl(path), batch_size=batch_size):
+        
+        total_vectores_a_enviar += len(batch_chunks)
+        
         # Para v1, el texto del embedding es el campo "text" tal cual.
         texts_missing = [c for c in batch_chunks if not isinstance(c.get("text"), str)]
         if texts_missing:
@@ -202,25 +232,16 @@ def ingest_file(
             if not batch_chunks:
                 continue
 
-        if dry_run:
-            # En dry-run no llamamos a modelos ni a Pinecone
-            LOG.debug("[dry-run] batch de %d chunks (namespace=%s)", len(batch_chunks), namespace)
-            n_chunks += len(batch_chunks)
-            n_batches += 1
-            continue
-
         # 1) Embeddings
         texts = [c.get("text", "") for c in batch_chunks]    
         vectors = EMB.embed_texts(texts)
-    
+     
         # 2) Upsert
         items = prepare_upsert_payload(batch_chunks, vectors)
-        PC.upsert(items, namespace=namespace)
+        ok += PC.upsert(items=helper_no_null(items), namespace=namespace)
 
-        n_chunks += len(batch_chunks)
-        n_batches += 1
+    err = total_vectores_a_enviar - ok
 
-    LOG.info("OK %s — %d chunks en %d batches", path.name, n_chunks, n_batches)
-    return n_chunks, n_batches
+    return ok, err
 
 

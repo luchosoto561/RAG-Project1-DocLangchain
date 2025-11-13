@@ -24,15 +24,7 @@ import time
 import logging
 from typing import Any, Dict, List, Optional
 
-# Dependencia oficial del SDK nuevo de Pinecone:
-#   pip install pinecone
-try:
-    from pinecone import Pinecone  # SDK moderno (>=3.x)
-except Exception as e:  # pragma: no cover
-    raise RuntimeError(
-        "No se pudo importar 'pinecone'. Instalá el SDK con: pip install pinecone"
-    ) from e
-
+from pinecone import Pinecone
 
 # -------------------------------
 # Config y singletons de cliente
@@ -78,7 +70,7 @@ def _get_index():
 
 def upsert(
     *,
-    items: List[Dict[str, Any]],
+    items: List[Dict[str, Any]], # id + vector + metadata
     namespace: str, 
     max_retries: int = 3,
     initial_backoff_s: float = 1.0,
@@ -110,12 +102,12 @@ def upsert(
 
     # Validación mínima de estructura (v1)
     for it in items:
-        if "id" not in it or "vector" not in it:
-            raise ValueError("Cada item debe tener 'id' y 'vector'.")
+        if "id" not in it or "values" not in it:
+            raise ValueError("Cada item debe tener 'id' y 'values'.")
         if not isinstance(it["id"], str):
             raise ValueError("El 'id' debe ser str.")
-        if not isinstance(it["vector"], list):
-            raise ValueError("'vector' debe ser una lista de floats.")
+        if not isinstance(it["values"], list):
+            raise ValueError("'values' debe ser una lista de floats.")
         # metadata es opcional en Pinecone, pero nosotros solemos enviarla
         if "metadata" in it and not isinstance(it["metadata"], dict):
             raise ValueError("'metadata' (si está) debe ser dict JSON-serializable.")
@@ -129,8 +121,7 @@ def upsert(
 
     while attempt <= max_retries:
         try:
-            # El SDK acepta directamente la lista de dicts con id/vector/metadata
-            # Ver: index.upsert(vectors=..., namespace="...")
+            # es el verdadero upsert contra Pinecone, todo lo demas son validaciones, manejo de reintentos
             index.upsert(vectors=items, namespace=namespace)
             logging.info("Upsert OK: %d vectores (namespace=%s)", len(items), namespace)
             return len(items)

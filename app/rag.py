@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 import os
 import asyncio
 from typing import AsyncGenerator, Any, Dict, List
@@ -183,18 +184,23 @@ def build_citations_from_docs(docs: List[Document]) -> List[Dict[str, str]]:
 # 3) RETRIEVER (VECTOR DB)
 # ============================
 
+def _clean_env(name: str) -> str:
+    # saca BOM y espacios invisibles
+    return os.environ[name].replace("\ufeff", "").strip()
+
 # Embeddings para Pinecone (usa OPENAI_API_KEY desde el entorno)
 _embeddings = OpenAIEmbeddings(
     model="text-embedding-3-small",
+    api_key=_clean_env("OPENAI_API_KEY"),  # <-- clave limpia
 )
 
 # Nombre del índice y namespace
-_PINECONE_INDEX_NAME = os.environ["PINECONE_INDEX"]
+_PINECONE_INDEX_NAME = _clean_env("PINECONE_INDEX")
 _PINECONE_NAMESPACE = "dev"          # el namespace donde cargaste los 650 records
 _TEXT_FIELD_NAME = "text"            # campo de metadata donde guardaste el chunk
 
 # Cliente e índice de Pinecone (serverless)
-_pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
+_pc = Pinecone(api_key=_clean_env("PINECONE_API_KEY"))
 _index = _pc.Index(_PINECONE_INDEX_NAME)
 
 async def retrieve_relevant_docs(question: str, k: int = 4) -> List[Document]:
@@ -221,17 +227,17 @@ async def retrieve_relevant_docs(question: str, k: int = 4) -> List[Document]:
         if metadata is None:
             metadata = {}
 
-        text = (metadata.get(_TEXT_FIELD_NAME) or "").strip()
-
+        # text = (metadata.get(_TEXT_FIELD_NAME) or "").strip()
+        text = (metadata.get(_TEXT_FIELD_NAME) or "")
+        text = text.replace("\ufeff", "").strip()
+        
         docs.append(
             Document(
                 page_content=text,
                 metadata=metadata,
             )
         )
-        print(f"el contenido del chunk recuperado es: {text}")
 
-    print(f"[Pinecone] matches dev: {len(docs)}", flush=True)
     return docs
 
 # ============================
@@ -251,6 +257,7 @@ def _build_llm() -> ChatOpenAI:
         model="gpt-4.1-mini",  # Cambiá esto al modelo que uses
         temperature=0.2,
         streaming=True,  # IMPORTANTE para poder hacer astream
+        api_key=_clean_env("OPENAI_API_KEY"),  # <-- clave limpia
     )
 
 
@@ -311,7 +318,7 @@ async def respond_stream(messages: List[Any]) -> AsyncGenerator[Dict[str, Any], 
         return
 
     last_message = normalized[-1]
-    question = last_message["content"].strip()
+    question = str(last_message["content"]).replace("\ufeff", "").strip()
 
     history_messages = normalized[:-1]
     history_str = _format_history(history_messages)
@@ -328,8 +335,8 @@ async def respond_stream(messages: List[Any]) -> AsyncGenerator[Dict[str, Any], 
         # Si falla el retriever, avisamos al frontend y abortamos.
         yield {
             "type": "error",
-            "message": "Error al recuperar el contexto desde la base vectorial.",
-            "detail": str(e),  # en producción lo podés omitir
+            "message": "Error al recuperar el contexto desde la base vectorial. ultima revision",
+            "detail": traceback.format_exc(),  # en producción lo podés omitir
         }
         return
 

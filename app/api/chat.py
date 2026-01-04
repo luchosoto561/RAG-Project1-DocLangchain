@@ -34,17 +34,36 @@ def sse(event: dict) -> str:
 
 
 # aca la magia la hace el StreamingResponse que lo explico en mi notion al detalle
+# @router.post("/chat")
+# async def chat(payload: ChatRequest):
+#     async def event_source():
+#         try:
+#             async for event in respond_stream(payload.messages):
+#                 yield sse(event)
+#         except asyncio.CancelledError:
+#             return
+
+#     return StreamingResponse(
+#         event_source(),
+#         media_type="text/event-stream",
+#         headers={"Cache-Control": "no-cache"},
+#     )
+
 @router.post("/chat")
 async def chat(payload: ChatRequest):
     async def event_source():
-        try:
-            async for event in respond_stream(payload.messages):
-                yield sse(event)
-        except asyncio.CancelledError:
-            return
+        # 1) mandá algo ya
+        yield ": connected\n\n"
+
+        # 2) forzá que el server quede abierto 5 segundos
+        await asyncio.sleep(5)
+
+        # 3) después recién llamá al RAG
+        async for event in respond_stream(payload.messages):
+            yield sse(event)
 
     return StreamingResponse(
         event_source(),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache"},
+        headers={"Cache-Control": "no-cache, no-transform"},
     )
